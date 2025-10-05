@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sipariş Detayı</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .label { font-weight: 600; }
+        .print-btn { float: right; }
+        @media print {
+            .no-print { display: none; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body class="bg-light py-5">
+
+<div class="container">
+    <div class="card shadow-lg mx-auto p-4" style="max-width: 750px;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">📦 Sipariş Detayı</h2>
+            <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
+        </div>
+
+        <hr>
+
+        <!-- 1️⃣ Temel Bilgiler -->
+        <div class="row mb-3">
+            <div class="col-md-6"><span class="label">Sipariş No:</span> {{ order.siparis_numarasi }}</div>
+            <div class="col-md-6"><span class="label">Sipariş Tipi:</span> {{ order.siparis_tipi }}</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6"><span class="label">Müşteri:</span> {{ order.musteri }}</div>
+            <div class="col-md-6"><span class="label">Ürün Kodu:</span> {{ order.urun_kodu }}</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6"><span class="label">Renk:</span> {{ order.renk }}</div>
+            <div class="col-md-6"><span class="label">Beden:</span> {{ order.beden }}</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6"><span class="label">Adet:</span> {{ order.adet }}</div>
+            <div class="col-md-6"><span class="label">Sipariş Tarihi:</span> {{ order.siparis_tarihi|date:"d.m.Y" }}</div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6"><span class="label">Teslim Tarihi:</span> {{ order.teslim_tarihi|date:"d.m.Y" }}</div>
+            <div class="col-md-6"><span class="label">Açıklama:</span> {{ order.aciklama }}</div>
+        </div>
+
+        <hr>
+
+        <!-- 2️⃣ Görseller -->
+        <div class="row text-center">
+            <div class="col-md-6 mb-3">
+                <span class="label">Resim:</span><br>
+                {% if order.resim %}
+                    <img src="{{ order.resim.url }}" alt="Sipariş Resmi" class="img-fluid rounded shadow-sm mt-2" style="max-height: 180px;">
+                {% else %}
+                    <span class="text-muted">Yok</span>
+                {% endif %}
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <span class="label">QR Kod:</span><br>
+                {% if order.qr_code %}
+                    <img src="{{ order.qr_code.url }}" alt="QR Kod" class="img-fluid rounded shadow-sm mt-2" style="max-height: 180px;">
+                {% else %}
+                    <span class="text-muted">Yok</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="text-center mt-4 no-print">
+            <a href="{% url 'order_list' %}" class="btn btn-secondary">⬅ Geri Dön</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

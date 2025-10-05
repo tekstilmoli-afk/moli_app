@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sipariş Sil</title>
+</head>
+<body>
+    <h1>Siparişi Sil</h1>
+
+    <p><b>{{ order.urun_kodu }}</b> adlı siparişi silmek istediğine emin misin?</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">Evet, Sil</button>
+    </form>
+
+    <a href="{% url 'order_list' %}">⬅ Vazgeç</a>
+</body>
+</html>
