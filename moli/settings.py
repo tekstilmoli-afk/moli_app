@@ -58,6 +58,7 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'moli.wsgi.application'
 
 # Database
