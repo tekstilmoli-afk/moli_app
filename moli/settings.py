@@ -18,8 +18,6 @@ SECRET_KEY = 'django-insecure-=txqn8ko9(2^=#k50qxd^@y-6gujv3a0%f283zfkz23@_i2wy#
 DEBUG = False
 
 # ✅ Render için ALLOWED_HOSTS ayarı
-# Geliştirme sürecinde hızlıca test edebilmek için '*' kullanıyoruz.
-# İstersen buraya özel olarak projenin Render URL'sini de yazabilirsin.
 ALLOWED_HOSTS = ['*']
 
 # Application definition
@@ -51,4 +49,62 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
-            'context_proc_
+            'context_processors': [
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'moli.wsgi.application'
+
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+DATABASES = {
+    'default': dj_database_url.parse(
+        'postgresql://postgres:xUPplVVDFeKUSjnfTgtxIvvrZAWnMSaq@switchyard.proxy.rlwy.net:23849/railway',
+        conn_max_age=600,
+        ssl_require=True
+    )
+}
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# Internationalization
+LANGUAGE_CODE = 'tr'
+TIME_ZONE = 'Europe/Istanbul'
+USE_I18N = True
+USE_TZ = True
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Media files (e.g. uploaded images, QR codes)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# Auth redirects
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/home/"
+LOGOUT_REDIRECT_URL = "/login/"
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
