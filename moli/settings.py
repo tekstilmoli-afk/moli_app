@@ -8,19 +8,15 @@ from pathlib import Path
 import os
 import dj_database_url
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# 📌 Ana dizin yolu
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# ⚠️ Güvenlik
 SECRET_KEY = 'django-insecure-=txqn8ko9(2^=#k50qxd^@y-6gujv3a0%f283zfkz23@_i2wy#'
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
+ALLOWED_HOSTS = ['*']  # Render için herkese izin verildi, istersen özel domain ekleyebiliriz
 
-# ✅ Render için ALLOWED_HOSTS ayarı
-ALLOWED_HOSTS = ['*']
-
-# Application definition
+# 📦 Uygulamalar
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -31,10 +27,13 @@ INSTALLED_APPS = [
     'core',
 ]
 
+# 🌐 Middleware sırası — CACHE aktif olacak şekilde düzenlendi
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.cache.UpdateCacheMiddleware',    # 🟡 Cache middleware üstte
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware', # 🟡 Cache middleware altta
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -43,6 +42,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'moli.urls'
 
+# 🧠 Template ayarları
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -58,11 +58,9 @@ TEMPLATES = [
     },
 ]
 
-
 WSGI_APPLICATION = 'moli.wsgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# 🗃️ Veritabanı — Railway PostgreSQL
 DATABASES = {
     'default': dj_database_url.parse(
         'postgresql://postgres:xUPplVVDFeKUSjnfTgtxIvvrZAWnMSaq@switchyard.proxy.rlwy.net:23849/railway',
@@ -71,7 +69,7 @@ DATABASES = {
     )
 }
 
-# Password validation
+# 🔐 Şifre doğrulama
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -87,25 +85,37 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# Internationalization
+# 🌍 Uluslararasılaştırma
 LANGUAGE_CODE = 'tr'
 TIME_ZONE = 'Europe/Istanbul'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
+# 🧠 Basit Cache Ayarı (şimdilik RAM içinde tutar — ileride Redis'e geçebiliriz)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+# Varsayılan cache süresi (saniye)
+CACHE_MIDDLEWARE_SECONDS = 60
+CACHE_MIDDLEWARE_KEY_PREFIX = ''
+
+# 🧰 Statik dosyalar
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Media files (e.g. uploaded images, QR codes)
+# 📂 Medya dosyaları (örneğin yüklenen resimler, QR kodlar)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Auth redirects
+# 👤 Login yönlendirmeleri
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/home/"
 LOGOUT_REDIRECT_URL = "/login/"
 
-# Default primary key field type
+# 🔑 Varsayılan primary key tipi
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
