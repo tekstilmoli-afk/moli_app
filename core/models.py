@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from django.urls import reverse
+from django.conf import settings
 import qrcode
 from io import BytesIO
 from django.core.files.base import ContentFile
@@ -59,11 +60,12 @@ class Order(models.Model):
 
         super().save(*args, **kwargs)  # önce kaydet ki pk oluşsun
 
-        # 📌 Render domainini kullanarak QR kod oluştur
-        if not self.qr_code:
-            base_url = "https://moli-app.onrender.com"  # 🌐 Kalıcı domain
-            detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
+        # 📌 Ortama göre doğru base URL seç
+        base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
+        detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
 
+        # QR kod daha önce yoksa üret
+        if not self.qr_code:
             qr = qrcode.QRCode(box_size=8, border=2)
             qr.add_data(detail_url)
             qr.make(fit=True)
