@@ -7,7 +7,6 @@
     <style>
         th a { color: white; text-decoration: none; }
         th a:hover { text-decoration: underline; }
-        .arrow { font-size: 0.8rem; }
         .filter-dropdown { max-height: 240px; overflow-y: auto; min-width: 180px; }
         .print-btn { padding: 2px 6px; font-size: 0.8rem; }
         .qr-img { width: 50px; height: 50px; object-fit: contain; }
@@ -25,10 +24,13 @@
     <h2 class="mb-4 text-center">📋 Sipariş Listesi</h2>
 
     <!-- Üst bar -->
-    <form method="get" class="mb-3">
+    <form method="get" class="mb-3" id="searchForm">
         <div class="row g-2 align-items-stretch">
             <div class="col-12 col-md-2 d-grid">
                 <a href="{% url 'order_create' %}" class="btn btn-primary">➕ Yeni Sipariş</a>
+            </div>
+            <div class="col-12 col-md-2 d-grid">
+                <a href="{% url 'musteri_create' %}" class="btn btn-outline-primary">👤 Müşteri Ekle</a>
             </div>
             <div class="col-12 col-md-4">
                 <input type="text" name="q" value="{{ q }}" placeholder="Ara..." class="form-control">
@@ -39,191 +41,13 @@
             <div class="col-12 col-md-2 d-grid">
                 <a href="{% url 'export_orders_excel' %}?{{ request.GET.urlencode }}" class="btn btn-success">📥 Excel İndir</a>
             </div>
-            <div class="col-12 col-md-2 d-grid">
-                <a href="{% url 'order_list' %}" class="btn btn-outline-danger">❌ Filtreleri Kaldır</a>
-            </div>
         </div>
     </form>
 
-    {% if orders %}
-    <div class="table-responsive">
-        <form method="get" id="filterForm">
-            <input type="hidden" name="q" value="{{ q }}">
-            <table class="table table-bordered table-hover align-middle bg-white shadow-sm table-sm">
-                <thead class="table-dark text-center align-middle">
-                    <tr>
-                        <!-- Sipariş No -->
-                        <th>
-                            <div class="dropdown">
-                                <a class="dropdown-toggle" href="#" data-bs-toggle="dropdown">No</a>
-                                <div class="dropdown-menu p-2 filter-dropdown text-start">
-                                    <small class="text-muted">Filtre yok</small>
-                                </div>
-                            </div>
-                        </th>
-
-                        <!-- Sipariş Tipi -->
-                        <th>
-                            <div class="dropdown">
-                                <a class="dropdown-toggle" href="#" data-bs-toggle="dropdown">Tip</a>
-                                <div class="dropdown-menu p-2 filter-dropdown">
-                                    {% for tip in tip_options %}
-                                        {% if tip %}
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="siparis_tipi" value="{{ tip }}"
-                                                   id="tip{{ forloop.counter }}" {% if tip in tip_selected %}checked{% endif %}>
-                                            <label class="form-check-label" for="tip{{ forloop.counter }}">{{ tip }}</label>
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <div class="d-grid mt-2">
-                                        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </th>
-
-                        <!-- Müşteri -->
-                        <th>
-                            <div class="dropdown">
-                                <a class="dropdown-toggle" href="#" data-bs-toggle="dropdown">Müşteri</a>
-                                <div class="dropdown-menu p-2 filter-dropdown">
-                                    {% for musteri in musteri_options %}
-                                        {% if musteri %}
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="musteri" value="{{ musteri }}"
-                                                   id="m{{ forloop.counter }}" {% if musteri in musteri_selected %}checked{% endif %}>
-                                            <label class="form-check-label" for="m{{ forloop.counter }}">{{ musteri }}</label>
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <div class="d-grid mt-2">
-                                        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </th>
-
-                        <!-- Ürün Kodu -->
-                        <th>
-                            <div class="dropdown">
-                                <a class="dropdown-toggle" href="#" data-bs-toggle="dropdown">Ürün</a>
-                                <div class="dropdown-menu p-2 filter-dropdown">
-                                    {% for urun in urun_options %}
-                                        {% if urun %}
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="urun_kodu" value="{{ urun }}"
-                                                   id="u{{ forloop.counter }}" {% if urun in urun_selected %}checked{% endif %}>
-                                            <label class="form-check-label" for="u{{ forloop.counter }}">{{ urun }}</label>
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <div class="d-grid mt-2">
-                                        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </th>
-
-                        <!-- Renk -->
-                        <th>
-                            <div class="dropdown">
-                                <a class="dropdown-toggle" href="#" data-bs-toggle="dropdown">Renk</a>
-                                <div class="dropdown-menu p-2 filter-dropdown">
-                                    {% for renk in renk_options %}
-                                        {% if renk %}
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="renk" value="{{ renk }}"
-                                                   id="r{{ forloop.counter }}" {% if renk in renk_selected %}checked{% endif %}>
-                                            <label class="form-check-label" for="r{{ forloop.counter }}">{{ renk }}</label>
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <div class="d-grid mt-2">
-                                        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </th>
-
-                        <!-- Beden -->
-                        <th>
-                            <div class="dropdown">
-                                <a class="dropdown-toggle" href="#" data-bs-toggle="dropdown">Beden</a>
-                                <div class="dropdown-menu p-2 filter-dropdown">
-                                    {% for beden in beden_options %}
-                                        {% if beden %}
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="beden" value="{{ beden }}"
-                                                   id="b{{ forloop.counter }}" {% if beden in beden_selected %}checked{% endif %}>
-                                            <label class="form-check-label" for="b{{ forloop.counter }}">{{ beden }}</label>
-                                        </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <div class="d-grid mt-2">
-                                        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </th>
-
-                        <th>Adet</th>
-                        <th>Sipariş</th>
-                        <th>Teslim</th>
-                        <th>Açıklama</th>
-                        <th>Kesim</th>
-                        <th>Dikim</th>
-                        <th>Süsleme</th>
-                        <th>Hazır</th>
-                        <th>Sevkiyat</th>
-                        <th>Resim</th>
-                        <th>QR</th>
-                        <th>Yazdır</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-                    {% for order in orders %}
-                    <tr>
-                        <td><a href="{% url 'order_detail' order.pk %}" class="text-decoration-none">{{ order.siparis_numarasi }}</a></td>
-                        <td>{{ order.siparis_tipi }}</td>
-                        <td>{{ order.musteri }}</td>
-                        <td>{{ order.urun_kodu }}</td>
-                        <td>{{ order.renk }}</td>
-                        <td>{{ order.beden }}</td>
-                        <td>{{ order.adet }}</td>
-                        <td>{{ order.siparis_tarihi|date:"d.m.Y" }}</td>
-                        <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
-                        <td class="aciklama-cell">{{ order.aciklama }}</td>
-
-                        <td class="stage-info">{% if order.kesim_yapan %}<strong>{{ order.kesim_yapan }}</strong><br>{{ order.kesim_tarihi|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
-                        <td class="stage-info">{% if order.dikim_yapan %}<strong>{{ order.dikim_yapan }}</strong><br>{{ order.dikim_tarihi|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
-                        <td class="stage-info">{% if order.susleme_yapan %}<strong>{{ order.susleme_yapan }}</strong><br>{{ order.susleme_tarihi|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
-                        <td class="stage-info">{% if order.hazir_yapan %}<strong>{{ order.hazir_yapan }}</strong><br>{{ order.hazir_tarihi|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
-                        <td class="stage-info">{% if order.sevkiyat_yapan %}<strong>{{ order.sevkiyat_yapan }}</strong><br>{{ order.sevkiyat_tarihi|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
-
-                        <td>{% if order.resim %}<img src="{{ order.resim.url }}" alt="Resim" width="50">{% else %}-{% endif %}</td>
-                        <td>{% if order.qr_code %}<img src="{{ order.qr_code.url }}" alt="QR Kod" class="qr-img">{% else %}-{% endif %}</td>
-
-                        <td class="text-center">
-                            <button type="button" class="btn btn-outline-secondary print-btn"
-                                onclick="printLabel('{{ order.siparis_numarasi }}', '{{ order.musteri }}', '{{ order.urun_kodu }}', '{{ order.adet }}', '{% if order.qr_code %}{{ order.qr_code.url }}{% endif %}')">
-                                🖨️
-                            </button>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="20" class="text-center text-muted">Hiç sipariş yok.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </form>
+    <!-- Tablo -->
+    <div id="order-table-container">
+        {% include "core/order_table_partial.html" %}
     </div>
-    {% else %}
-    <div class="alert alert-warning text-center">
-        Henüz sipariş yok. Hemen yeni bir sipariş ekleyebilirsiniz!
-    </div>
-    {% endif %}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -246,10 +70,10 @@ function printLabel(siparisNo, musteri, urunKodu, adet, qrUrl) {
         <body>
             <div class="label-box">
                 <h3>Sipariş Etiketi</h3>
-                <div class="info"><strong>No:</strong> ${siparisNo}</div>
-                <div class="info"><strong>Müşteri:</strong> ${musteri}</div>
-                <div class="info"><strong>Ürün:</strong> ${urunKodu}</div>
-                <div class="info"><strong>Adet:</strong> ${adet}</div>
+                <div class="info"><strong>No:</strong> ${siparisNo || ''}</div>
+                <div class="info"><strong>Müşteri:</strong> ${musteri || ''}</div>
+                <div class="info"><strong>Ürün:</strong> ${urunKodu || ''}</div>
+                <div class="info"><strong>Adet:</strong> ${adet || ''}</div>
                 ${qrUrl ? `<img src="${qrUrl}" alt="QR Kod">` : ''}
             </div>
             <script>window.onload = function(){ window.print(); setTimeout(()=>window.close(), 500); }<\/script>

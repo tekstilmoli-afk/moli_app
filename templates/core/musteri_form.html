@@ -2,20 +2,43 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yeni Müşteri</title>
+    <title>Yeni Müşteri Ekle</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 50px auto;
+        }
+    </style>
 </head>
-<body class="container mt-5">
+<body>
 
-    <h2 class="mb-4">➕ Yeni Müşteri Ekle</h2>
+<div class="container form-container">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">👤 Yeni Müşteri Ekle</h4>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                {% csrf_token %}
+                {{ form.as_p }}
 
-    <form method="post" class="card p-4 shadow-sm">
-        {% csrf_token %}
-        {{ form.as_p }}
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{% url 'order_list' %}" class="btn btn-outline-secondary">
+                        ⬅️ Listeye Dön
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        💾 Kaydet
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-        <button type="submit" class="btn btn-success">Kaydet</button>
-        <a href="{% url 'order_create' %}" class="btn btn-secondary">Siparişe Dön</a>
-    </form>
-
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
+from django.core.paginator import Paginator
+from django.template.loader import render_to_string
 from django.views.decorators.cache import cache_page
 from openpyxl import Workbook
 
@@ -8,16 +10,12 @@ from .models import Order, Musteri
 from .forms import OrderForm, MusteriForm
 
 
-# 📋 Sipariş Listeleme (Cache + Select Related + Lazy filters)
-@cache_page(60)  # 1 dakika boyunca listeyi cache’ler (yoğun sorgu yükünü azaltır)
-def order_list(request):
-    # İlişkili müşteri verisini tek sorguda almak için:
-    orders = Order.objects.select_related("musteri").all()
-
+# 🧠 Ortak filtreleme fonksiyonu (hem liste hem Excel export için kullanılıyor)
+def apply_filters(request, qs):
     # 🔍 Genel arama
     q = request.GET.get("q", "").strip()
     if q:
-        orders = orders.filter(
+        qs = qs.filter(
             Q(siparis_numarasi__icontains=q) |
             Q(siparis_tipi__icontains=q) |
             Q(musteri__ad__icontains=q) |
@@ -31,7 +29,7 @@ def order_list(request):
         )
 
     # 🧰 Filtreler
-    filters = {
+    filter_fields = {
         "siparis_tipi__in": request.GET.getlist("siparis_tipi"),
         "musteri__ad__in": request.GET.getlist("musteri"),
         "urun_kodu__in": request.GET.getlist("urun_kodu"),
@@ -42,52 +40,80 @@ def order_list(request):
         "teslim_tarihi__in": request.GET.getlist("teslim_tarihi"),
         "aciklama__in": request.GET.getlist("aciklama"),
     }
-
-    for field, value in filters.items():
+    for field, value in filter_fields.items():
         if value:
-            orders = orders.filter(**{field: value})
+            qs = qs.filter(**{field: value})
 
     # ⬆️ Sıralama
     sort_col = request.GET.get("sort")
     sort_dir = request.GET.get("dir", "asc")
     if sort_col:
-        orders = orders.order_by(f"-{sort_col}" if sort_dir == "desc" else sort_col)
+        qs = qs.order_by(f"-{sort_col}" if sort_dir == "desc" else sort_col)
 
-    # 🔽 Dropdown filtre seçenekleri (değerler küçük listelerde tutulur)
-    tip_options = Order.objects.values_list("siparis_tipi", flat=True).distinct()
-    musteri_options = Order.objects.values_list("musteri__ad", flat=True).distinct()
-    urun_options = Order.objects.values_list("urun_kodu", flat=True).distinct()
-    renk_options = Order.objects.values_list("renk", flat=True).distinct()
-    beden_options = Order.objects.values_list("beden", flat=True).distinct()
-    adet_options = Order.objects.values_list("adet", flat=True).distinct()
-    sip_tarih_options = Order.objects.values_list("siparis_tarihi", flat=True).distinct()
-    tes_tarih_options = Order.objects.values_list("teslim_tarihi", flat=True).distinct()
-    aciklama_options = Order.objects.values_list("aciklama", flat=True).distinct()
+    return qs
 
+
+# 📋 Sipariş Listeleme (AJAX + Cache + Sayfalama + Sıralama)
+@cache_page(60)
+def order_list(request):
+    # 🌿 Sorgu
+    qs = (
+        Order.objects.select_related("musteri")
+        .only(
+            "id", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk", "beden",
+            "adet", "siparis_tarihi", "teslim_tarihi", "aciklama",
+            "musteri__ad", "qr_code", "resim",
+            "kesim_yapan", "kesim_tarihi",
+            "dikim_yapan", "dikim_tarihi",
+            "susleme_yapan", "susleme_tarihi",
+            "hazir_yapan", "hazir_tarihi",
+            "sevkiyat_yapan", "sevkiyat_tarihi",
+        )
+    )
+
+    qs = apply_filters(request, qs)
+
+    # ⚠️ Sıralama yapılmamışsa varsayılan olarak -id sıralaması ekle
+    if not qs.query.order_by:
+        qs = qs.order_by('-id')
+
+    # ⬇️ Şu anki sıralama parametrelerini al
+    current_sort = request.GET.get("sort")
+    current_dir = request.GET.get("dir", "asc")
+
+    # 📄 Sayfalama
+    paginator = Paginator(qs, 50)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    # 🔽 Dropdown filtre seçenekleri
     context = {
-        "orders": orders,
-        "q": q,
-        "current_sort": sort_col,
-        "current_dir": sort_dir,
-        "tip_options": tip_options,
-        "musteri_options": musteri_options,
-        "urun_options": urun_options,
-        "renk_options": renk_options,
-        "beden_options": beden_options,
-        "adet_options": adet_options,
-        "sip_tarih_options": sip_tarih_options,
-        "tes_tarih_options": tes_tarih_options,
-        "aciklama_options": aciklama_options,
-        "tip_selected": filters["siparis_tipi__in"],
-        "musteri_selected": filters["musteri__ad__in"],
-        "urun_selected": filters["urun_kodu__in"],
-        "renk_selected": filters["renk__in"],
-        "beden_selected": filters["beden__in"],
-        "adet_selected": filters["adet__in"],
-        "sip_tarih_selected": filters["siparis_tarihi__in"],
-        "tes_tarih_selected": filters["teslim_tarihi__in"],
-        "aciklama_selected": filters["aciklama__in"],
+        "orders": page_obj,
+        "q": request.GET.get("q", "").strip(),
+        "current_sort": current_sort,  # 👈 EKLENDİ
+        "current_dir": current_dir,    # 👈 EKLENDİ
+        "tip_options": Order.objects.values_list("siparis_tipi", flat=True).distinct(),
+        "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct(),
+        "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct(),
+        "renk_options": Order.objects.values_list("renk", flat=True).distinct(),
+        "beden_options": Order.objects.values_list("beden", flat=True).distinct(),
+        "adet_options": Order.objects.values_list("adet", flat=True).distinct(),
+        "sip_tarih_options": Order.objects.values_list("siparis_tarihi", flat=True).distinct(),
+        "tes_tarih_options": Order.objects.values_list("teslim_tarihi", flat=True).distinct(),
+        "aciklama_options": Order.objects.values_list("aciklama", flat=True).distinct(),
+        "tip_selected": request.GET.getlist("siparis_tipi"),
+        "musteri_selected": request.GET.getlist("musteri"),
+        "urun_selected": request.GET.getlist("urun_kodu"),
+        "renk_selected": request.GET.getlist("renk"),
+        "beden_selected": request.GET.getlist("beden"),
     }
+
+    # ⚡ AJAX isteği → sadece tabloyu gönder
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        html = render_to_string("core/order_table_partial.html", context, request=request)
+        return JsonResponse({"html": html})
+
+    # 🌍 Normal sayfa
     return render(request, "core/order_list.html", context)
 
 
@@ -105,7 +131,19 @@ def order_create(request):
 
 # 📌 Sipariş Detay
 def order_detail(request, pk):
-    order = get_object_or_404(Order.objects.select_related("musteri"), pk=pk)
+    order = get_object_or_404(
+        Order.objects.select_related("musteri").only(
+            "id", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk", "beden",
+            "adet", "siparis_tarihi", "teslim_tarihi", "aciklama",
+            "musteri__ad", "qr_code", "resim",
+            "kesim_yapan", "kesim_tarihi",
+            "dikim_yapan", "dikim_tarihi",
+            "susleme_yapan", "susleme_tarihi",
+            "hazir_yapan", "hazir_tarihi",
+            "sevkiyat_yapan", "sevkiyat_tarihi",
+        ),
+        pk=pk
+    )
     return render(request, "core/order_detail.html", {"order": order})
 
 
@@ -121,41 +159,9 @@ def musteri_create(request):
     return render(request, "core/musteri_form.html", {"form": form})
 
 
-# 📊 Excel çıktı alma (filtrelerle uyumlu)
+# 📊 Excel çıktı alma (filtrelerle senkronize)
 def export_orders_excel(request):
-    orders = Order.objects.select_related("musteri").all()
-
-    # Mevcut filtreleri yeniden uygula
-    q = request.GET.get("q", "").strip()
-    if q:
-        orders = orders.filter(
-            Q(siparis_numarasi__icontains=q) |
-            Q(siparis_tipi__icontains=q) |
-            Q(musteri__ad__icontains=q) |
-            Q(urun_kodu__icontains=q) |
-            Q(renk__icontains=q) |
-            Q(beden__icontains=q) |
-            Q(adet__icontains=q) |
-            Q(siparis_tarihi__icontains=q) |
-            Q(teslim_tarihi__icontains=q) |
-            Q(aciklama__icontains=q)
-        )
-
-    # Filtreleri tekrar uygula
-    filters = {
-        "siparis_tipi__in": request.GET.getlist("siparis_tipi"),
-        "musteri__ad__in": request.GET.getlist("musteri"),
-        "urun_kodu__in": request.GET.getlist("urun_kodu"),
-        "renk__in": request.GET.getlist("renk"),
-        "beden__in": request.GET.getlist("beden"),
-        "adet__in": request.GET.getlist("adet"),
-        "siparis_tarihi__in": request.GET.getlist("siparis_tarihi"),
-        "teslim_tarihi__in": request.GET.getlist("teslim_tarihi"),
-        "aciklama__in": request.GET.getlist("aciklama"),
-    }
-    for field, value in filters.items():
-        if value:
-            orders = orders.filter(**{field: value})
+    qs = apply_filters(request, Order.objects.select_related("musteri"))
 
     # 📘 Excel oluştur
     wb = Workbook()
@@ -163,20 +169,12 @@ def export_orders_excel(request):
     ws.title = "Siparişler"
 
     headers = [
-        "Sipariş No",
-        "Sipariş Tipi",
-        "Müşteri",
-        "Ürün Kodu",
-        "Renk",
-        "Beden",
-        "Adet",
-        "Sipariş Tarihi",
-        "Teslim Tarihi",
-        "Açıklama",
+        "Sipariş No", "Sipariş Tipi", "Müşteri", "Ürün Kodu", "Renk",
+        "Beden", "Adet", "Sipariş Tarihi", "Teslim Tarihi", "Açıklama"
     ]
     ws.append(headers)
 
-    for order in orders:
+    for order in qs:
         ws.append([
             order.siparis_numarasi,
             order.siparis_tipi,

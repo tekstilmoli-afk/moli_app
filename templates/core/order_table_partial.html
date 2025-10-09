@@ -1,0 +1,178 @@
+<div class="table-responsive">
+    <table class="table table-bordered table-hover align-middle bg-white shadow-sm table-sm">
+        <thead class="table-dark text-center align-middle">
+            <tr>
+                <!-- No -->
+                <th>
+                    <a href="?sort=siparis_numarasi&dir={% if current_sort == 'siparis_numarasi' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="text-white text-decoration-none ajax-page">
+                        No
+                        {% if current_sort == 'siparis_numarasi' %}
+                            {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Tip -->
+                <th>Tip</th>
+
+                <!-- Müşteri -->
+                <th>
+                    <a href="?sort=musteri__ad&dir={% if current_sort == 'musteri__ad' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="text-white text-decoration-none ajax-page">
+                        Müşteri
+                        {% if current_sort == 'musteri__ad' %}
+                            {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Ürün -->
+                <th>
+                    <a href="?sort=urun_kodu&dir={% if current_sort == 'urun_kodu' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="text-white text-decoration-none ajax-page">
+                        Ürün
+                        {% if current_sort == 'urun_kodu' %}
+                            {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>Renk</th>
+                <th>Beden</th>
+                <th>Adet</th>
+
+                <!-- Sipariş Tarihi -->
+                <th>
+                    <a href="?sort=siparis_tarihi&dir={% if current_sort == 'siparis_tarihi' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="text-white text-decoration-none ajax-page">
+                        Sipariş
+                        {% if current_sort == 'siparis_tarihi' %}
+                            {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <!-- Teslim Tarihi -->
+                <th>
+                    <a href="?sort=teslim_tarihi&dir={% if current_sort == 'teslim_tarihi' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
+                       class="text-white text-decoration-none ajax-page">
+                        Teslim
+                        {% if current_sort == 'teslim_tarihi' %}
+                            {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}
+                        {% endif %}
+                    </a>
+                </th>
+
+                <th>Açıklama</th>
+                <th>Kesim</th>
+                <th>Dikim</th>
+                <th>Süsleme</th>
+                <th>Hazır</th>
+                <th>Sevkiyat</th>
+                <th>Resim</th>
+                <th>QR</th>
+                <th>Yazdır</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>
+                    <a href="{% url 'order_detail' order.pk %}" class="text-decoration-none">
+                        {{ order.siparis_numarasi }}
+                    </a>
+                </td>
+                <td>{{ order.siparis_tipi }}</td>
+                <td>{{ order.musteri }}</td>
+                <td>{{ order.urun_kodu }}</td>
+                <td>{{ order.renk }}</td>
+                <td>{{ order.beden }}</td>
+                <td>{{ order.adet }}</td>
+                <td>{{ order.siparis_tarihi|date:"d.m.Y" }}</td>
+                <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
+                <td class="aciklama-cell">{{ order.aciklama }}</td>
+
+                <td class="stage-info">
+                    {% if order.kesim_yapan %}
+                        <strong>{{ order.kesim_yapan }}</strong><br>
+                        {{ order.kesim_tarihi|date:"d.m.Y H:i" }}
+                    {% else %}-{% endif %}
+                </td>
+                <td class="stage-info">
+                    {% if order.dikim_yapan %}
+                        <strong>{{ order.dikim_yapan }}</strong><br>
+                        {{ order.dikim_tarihi|date:"d.m.Y H:i" }}
+                    {% else %}-{% endif %}
+                </td>
+                <td class="stage-info">
+                    {% if order.susleme_yapan %}
+                        <strong>{{ order.susleme_yapan }}</strong><br>
+                        {{ order.susleme_tarihi|date:"d.m.Y H:i" }}
+                    {% else %}-{% endif %}
+                </td>
+                <td class="stage-info">
+                    {% if order.hazir_yapan %}
+                        <strong>{{ order.hazir_yapan }}</strong><br>
+                        {{ order.hazir_tarihi|date:"d.m.Y H:i" }}
+                    {% else %}-{% endif %}
+                </td>
+                <td class="stage-info">
+                    {% if order.sevkiyat_yapan %}
+                        <strong>{{ order.sevkiyat_yapan }}</strong><br>
+                        {{ order.sevkiyat_tarihi|date:"d.m.Y H:i" }}
+                    {% else %}-{% endif %}
+                </td>
+
+                <td>{% if order.resim %}<img src="{{ order.resim.url }}" alt="Resim" width="50">{% else %}-{% endif %}</td>
+                <td>{% if order.qr_code %}<img src="{{ order.qr_code.url }}" alt="QR Kod" class="qr-img">{% else %}-{% endif %}</td>
+
+                <td class="text-center">
+                    <button type="button" class="btn btn-outline-secondary print-btn"
+                        onclick="printLabel('{{ order.siparis_numarasi|escapejs }}', '{{ order.musteri|escapejs }}', '{{ order.urun_kodu|escapejs }}', '{{ order.adet }}', '{% if order.qr_code %}{{ order.qr_code.url }}{% endif %}')">
+                        🖨️
+                    </button>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="18" class="text-center text-muted">Hiç sipariş yok.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 📄 Sayfalama -->
+{% if orders.has_other_pages %}
+<nav aria-label="Sayfalama">
+  <ul class="pagination justify-content-center mt-3">
+    {% if orders.has_previous %}
+      <li class="page-item">
+        <a class="page-link ajax-page" href="?page={{ orders.previous_page_number }}&{{ request.GET.urlencode }}">«</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">«</span></li>
+    {% endif %}
+
+    {% for num in orders.paginator.page_range %}
+      {% if orders.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+      {% else %}
+        <li class="page-item">
+          <a class="page-link ajax-page" href="?page={{ num }}&{{ request.GET.urlencode }}">{{ num }}</a>
+        </li>
+      {% endif %}
+    {% endfor %}
+
+    {% if orders.has_next %}
+      <li class="page-item">
+        <a class="page-link ajax-page" href="?page={{ orders.next_page_number }}&{{ request.GET.urlencode }}">»</a>
+      </li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">»</span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}

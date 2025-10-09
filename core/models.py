@@ -7,7 +7,7 @@ from django.core.files.base import ContentFile
 
 
 class Musteri(models.Model):
-    ad = models.CharField(max_length=200)
+    ad = models.CharField(max_length=200, db_index=True)
 
     def __str__(self):
         return self.ad
@@ -19,92 +19,35 @@ class Order(models.Model):
         ('SERI', 'Seri'),
     ]
 
-    siparis_tipi = models.CharField(
-        max_length=5,
-        choices=SIPARIS_TIPLERI,
-        null=True,
-        blank=True
-    )
-    siparis_numarasi = models.CharField(
-        max_length=20,
-        unique=True,
-        blank=True
-    )
-    musteri = models.ForeignKey(
-        Musteri,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True
-    )
-    siparis_tarihi = models.DateField(
-        default=timezone.now,
-        null=True,
-        blank=True
-    )
-    urun_kodu = models.CharField(
-        max_length=100,
-        null=True,
-        blank=True
-    )
-    adet = models.PositiveIntegerField(
-        null=True,
-        blank=True
-    )
+    siparis_tipi = models.CharField(max_length=5, choices=SIPARIS_TIPLERI, null=True, blank=True, db_index=True)
+    siparis_numarasi = models.CharField(max_length=20, unique=True, blank=True, db_index=True)
+    musteri = models.ForeignKey('Musteri', on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
+    siparis_tarihi = models.DateField(default=timezone.now, null=True, blank=True, db_index=True)
+    urun_kodu = models.CharField(max_length=100, null=True, blank=True, db_index=True)
+    adet = models.PositiveIntegerField(null=True, blank=True)
+    renk = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+    beden = models.CharField(max_length=50, null=True, blank=True, db_index=True)
+    teslim_tarihi = models.DateField(null=True, blank=True, db_index=True)
+    aciklama = models.TextField(blank=True, null=True)
+    resim = models.ImageField(upload_to='siparis_resimleri/', blank=True, null=True)
+    qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
 
-    # 🆕 Renk ve Beden alanları
-    renk = models.CharField(
-        max_length=50,
-        null=True,
-        blank=True
-    )
-    beden = models.CharField(
-        max_length=50,
-        null=True,
-        blank=True
-    )
-
-    teslim_tarihi = models.DateField(
-        null=True,
-        blank=True
-    )
-    aciklama = models.TextField(
-        blank=True,
-        null=True
-    )
-    resim = models.ImageField(
-        upload_to='siparis_resimleri/',
-        blank=True,
-        null=True
-    )
-    qr_code = models.ImageField(
-        upload_to='qr_codes/',
-        blank=True,
-        null=True
-    )
-
-    # 🧱 Üretim aşamaları
     kesim_yapan = models.CharField(max_length=100, blank=True, null=True)
     kesim_tarihi = models.DateTimeField(blank=True, null=True)
-
     dikim_yapan = models.CharField(max_length=100, blank=True, null=True)
     dikim_tarihi = models.DateTimeField(blank=True, null=True)
-
     susleme_yapan = models.CharField(max_length=100, blank=True, null=True)
     susleme_tarihi = models.DateTimeField(blank=True, null=True)
-
     hazir_yapan = models.CharField(max_length=100, blank=True, null=True)
     hazir_tarihi = models.DateTimeField(blank=True, null=True)
-
     sevkiyat_yapan = models.CharField(max_length=100, blank=True, null=True)
     sevkiyat_tarihi = models.DateTimeField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # 1️⃣ Sipariş numarası otomatik oluştur
+        # 🆔 Sipariş numarası otomatik üretimi
         if not self.siparis_numarasi and self.siparis_tipi:
             prefix = "ÖZEL" if self.siparis_tipi == "ÖZEL" else "SERI"
-            last_order = Order.objects.filter(
-                siparis_tipi=self.siparis_tipi
-            ).order_by("id").last()
+            last_order = Order.objects.filter(siparis_tipi=self.siparis_tipi).order_by("id").last()
             if last_order and last_order.siparis_numarasi:
                 try:
                     num = int(last_order.siparis_numarasi.replace(prefix, "")) + 1
@@ -116,9 +59,10 @@ class Order(models.Model):
 
         super().save(*args, **kwargs)  # önce kaydet ki pk oluşsun
 
-        # 2️⃣ QR kodu oluştur
+        # 📌 Render domainini kullanarak QR kod oluştur
         if not self.qr_code:
-            detail_url = f"http://127.0.0.1:8000{reverse('order_detail', args=[self.pk])}"
+            base_url = "https://moli-app.onrender.com"  # 🌐 Kalıcı domain
+            detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
 
             qr = qrcode.QRCode(box_size=8, border=2)
             qr.add_data(detail_url)
