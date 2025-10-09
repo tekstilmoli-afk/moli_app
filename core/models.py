@@ -60,12 +60,15 @@ class Order(models.Model):
 
         super().save(*args, **kwargs)  # önce kaydet ki pk oluşsun
 
-        # 📌 Ortama göre doğru base URL seç
+        # 🌐 Ortama göre base URL seçimi
         base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
         detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
+        print(f"🌍 QR için kullanılacak URL: {detail_url}")  # 🟡 DEBUG
 
-        # QR kod daha önce yoksa üret
+        # QR kod yoksa üret
         if not self.qr_code:
+            print(f"🧠 QR kod üretiliyor → {self.siparis_numarasi}")  # 🟡 DEBUG
+
             qr = qrcode.QRCode(box_size=8, border=2)
             qr.add_data(detail_url)
             qr.make(fit=True)
@@ -77,6 +80,8 @@ class Order(models.Model):
 
             self.qr_code.save(filename, ContentFile(buffer.getvalue()), save=False)
             super().save(update_fields=["qr_code"])
+
+            print(f"✅ QR kod kaydedildi: media/qr_codes/{filename}")  # 🟢 DEBUG
 
     def __str__(self):
         return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
