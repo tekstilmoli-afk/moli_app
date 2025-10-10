@@ -100,7 +100,10 @@ CACHE_MIDDLEWARE_KEY_PREFIX = ''
 
 # 🧰 Statik dosyalar
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+    BASE_DIR / "media",   # ✅ QR kodlarını da static build içine dahil et
+]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # 📂 Medya dosyaları (örneğin yüklenen resimler, QR kodlar)
