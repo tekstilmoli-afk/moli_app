@@ -28,9 +28,10 @@
                 <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
                 <td>
                     {% if order.qr_code %}
+                        <!-- ✅ QR kod için MEDIA_URL kullan -->
                         <img class="qr-img" 
-                             src="{% static 'qr_codes/qr_'|add:order.id|add:'.png' %}" 
-                             alt="QR Kod">
+                             src="{{ order.qr_code.url }}" 
+                             alt="QR Kod" width="50" height="50">
                     {% else %}
                         <span class="text-muted small fst-italic">QR Yok</span>
                     {% endif %}
@@ -43,7 +44,7 @@
                                 '{{ order.musteri|default_if_none:""|escapejs }}',
                                 '{{ order.urun_kodu|default_if_none:""|escapejs }}',
                                 '{{ order.adet|default_if_none:""|escapejs }}',
-                                '{% static 'qr_codes/qr_'|add:order.id|add:'.png' %}'
+                                '{{ order.qr_code.url }}'
                             )">
                             🖨️ Yazdır
                         </button>
