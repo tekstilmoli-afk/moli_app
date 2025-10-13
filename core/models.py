@@ -92,8 +92,8 @@ class Order(models.Model):
                 file_options={"content-type": "image/png"}
             )
 
-            # ✅ Yeni SDK: response bir UploadResponse objesi → .error özelliği var
-            if not response.error:
+            # ✅ Doğru kontrol: UploadResponse nesnesinde .error özelliği var
+            if response.error is None:
                 public_url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(filename)
                 self.qr_code_url = public_url
                 super().save(update_fields=["qr_code_url"])
