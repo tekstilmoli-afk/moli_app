@@ -62,7 +62,7 @@ def order_list(request):
         .only(
             "id", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk", "beden",
             "adet", "siparis_tarihi", "teslim_tarihi", "aciklama",
-            "musteri__ad", "qr_code", "resim",
+            "musteri__ad", "qr_code_url", "resim",
             "kesim_yapan", "kesim_tarihi",
             "dikim_yapan", "dikim_tarihi",
             "susleme_yapan", "susleme_tarihi",
@@ -135,7 +135,7 @@ def order_detail(request, pk):
         Order.objects.select_related("musteri").only(
             "id", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk", "beden",
             "adet", "siparis_tarihi", "teslim_tarihi", "aciklama",
-            "musteri__ad", "qr_code", "resim",
+            "musteri__ad", "qr_code_url", "resim",
             "kesim_yapan", "kesim_tarihi",
             "dikim_yapan", "dikim_tarihi",
             "susleme_yapan", "susleme_tarihi",
