@@ -1,0 +1,19 @@
+# Python
+*.pyc
+__pycache__/
+
+# Django
+db.sqlite3
+/staticfiles/
+/media/
+
+# VS Code
+.vscode/
+
+# Ortam dosyaları
+.env
+.venv/
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
