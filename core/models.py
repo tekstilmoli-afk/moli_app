@@ -92,13 +92,14 @@ class Order(models.Model):
                 file_options={"content-type": "image/png"}
             )
 
-            # ✅ Doğru kontrol: UploadResponse nesnesinde .error özelliği var
-            if response.error is None:
+            # ✅ UploadResponse objesinde .error yoksa getattr ile kontrol et
+            error_attr = getattr(response, "error", None)
+            if error_attr is None:
                 public_url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(filename)
                 self.qr_code_url = public_url
                 super().save(update_fields=["qr_code_url"])
             else:
-                print("⚠️ Supabase upload error:", response.error)
+                print("⚠️ Supabase upload error:", error_attr)
 
     def __str__(self):
         return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
