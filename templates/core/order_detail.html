@@ -1,3 +1,5 @@
+{% load static %}
+
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -66,7 +68,10 @@
             <div class="col-md-6 mb-3">
                 <span class="label">QR Kod:</span><br>
                 {% if order.qr_code %}
-                    <img src="{{ order.qr_code.url }}" alt="QR Kod" class="img-fluid rounded shadow-sm mt-2" style="max-height: 180px;">
+                    <img src="{% static 'qr_codes/qr_'|add:order.id|add:'.png' %}" 
+                         alt="QR Kod" 
+                         class="img-fluid rounded shadow-sm mt-2" 
+                         style="max-height: 180px;">
                 {% else %}
                     <span class="text-muted">Yok</span>
                 {% endif %}

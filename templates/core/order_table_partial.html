@@ -1,8 +1,9 @@
+{% load static %}
+
 <div class="table-responsive">
     <table class="table table-bordered table-hover align-middle bg-white shadow-sm table-sm">
         <thead class="table-dark text-center align-middle">
             <tr>
-                <!-- No -->
                 <th>
                     <a href="?sort=siparis_numarasi&dir={% if current_sort == 'siparis_numarasi' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
                        class="text-white text-decoration-none ajax-page">
@@ -12,11 +13,7 @@
                         {% endif %}
                     </a>
                 </th>
-
-                <!-- Tip -->
                 <th>Tip</th>
-
-                <!-- Müşteri -->
                 <th>
                     <a href="?sort=musteri__ad&dir={% if current_sort == 'musteri__ad' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
                        class="text-white text-decoration-none ajax-page">
@@ -26,8 +23,6 @@
                         {% endif %}
                     </a>
                 </th>
-
-                <!-- Ürün -->
                 <th>
                     <a href="?sort=urun_kodu&dir={% if current_sort == 'urun_kodu' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
                        class="text-white text-decoration-none ajax-page">
@@ -37,12 +32,9 @@
                         {% endif %}
                     </a>
                 </th>
-
                 <th>Renk</th>
                 <th>Beden</th>
                 <th>Adet</th>
-
-                <!-- Sipariş Tarihi -->
                 <th>
                     <a href="?sort=siparis_tarihi&dir={% if current_sort == 'siparis_tarihi' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
                        class="text-white text-decoration-none ajax-page">
@@ -52,8 +44,6 @@
                         {% endif %}
                     </a>
                 </th>
-
-                <!-- Teslim Tarihi -->
                 <th>
                     <a href="?sort=teslim_tarihi&dir={% if current_sort == 'teslim_tarihi' and current_dir == 'asc' %}desc{% else %}asc{% endif %}"
                        class="text-white text-decoration-none ajax-page">
@@ -63,7 +53,6 @@
                         {% endif %}
                     </a>
                 </th>
-
                 <th>Açıklama</th>
                 <th>Kesim</th>
                 <th>Dikim</th>
@@ -125,12 +114,33 @@
                     {% else %}-{% endif %}
                 </td>
 
-                <td>{% if order.resim %}<img src="{{ order.resim.url }}" alt="Resim" width="50">{% else %}-{% endif %}</td>
-                <td>{% if order.qr_code %}<img src="{{ order.qr_code.url }}" alt="QR Kod" class="qr-img">{% else %}-{% endif %}</td>
+                <td>
+                    {% if order.resim %}
+                        <img src="{{ order.resim.url }}" alt="Resim" width="50">
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
 
+                <!-- 📌 QR kod static yolundan -->
+                <td>
+                    {% if order.qr_code %}
+                        <img src="{% static 'qr_codes/qr_'|add:order.id|add:'.png' %}" alt="QR Kod" class="qr-img">
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+
+                <!-- 🖨️ Yazdır butonu -->
                 <td class="text-center">
                     <button type="button" class="btn btn-outline-secondary print-btn"
-                        onclick="printLabel('{{ order.siparis_numarasi|escapejs }}', '{{ order.musteri|escapejs }}', '{{ order.urun_kodu|escapejs }}', '{{ order.adet }}', '{% if order.qr_code %}{{ order.qr_code.url }}{% endif %}')">
+                        onclick="printLabel(
+                            '{{ order.siparis_numarasi|escapejs }}',
+                            '{{ order.musteri|default_if_none:""|escapejs }}',
+                            '{{ order.urun_kodu|default_if_none:""|escapejs }}',
+                            '{{ order.adet|default_if_none:""|escapejs }}',
+                            '{% if order.qr_code %}{% static "qr_codes/qr_"|add:order.id|add:".png" %}{% endif %}'
+                        )">
                         🖨️
                     </button>
                 </td>

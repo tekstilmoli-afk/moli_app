@@ -5,6 +5,8 @@ from django.conf import settings
 import qrcode
 from io import BytesIO
 from django.core.files.base import ContentFile
+import os
+import shutil
 
 
 class Musteri(models.Model):
@@ -82,6 +84,18 @@ class Order(models.Model):
             super().save(update_fields=["qr_code"])
 
             print(f"✅ QR kod kaydedildi: media/qr_codes/{filename}")  # 🟢 DEBUG
+
+            # 📌 Geçici çözüm: static klasörüne kopyala
+            media_path = os.path.join(settings.MEDIA_ROOT, 'qr_codes', filename)
+            static_qr_dir = os.path.join(settings.BASE_DIR, 'static', 'qr_codes')
+            static_path = os.path.join(static_qr_dir, filename)
+
+            os.makedirs(static_qr_dir, exist_ok=True)
+            try:
+                shutil.copy(media_path, static_path)
+                print(f"📁 Static klasöre kopyalandı: {static_path}")
+            except Exception as e:
+                print(f"⚠️ Static'e kopyalama başarısız: {e}")
 
     def __str__(self):
         return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
