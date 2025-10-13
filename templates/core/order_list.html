@@ -89,21 +89,21 @@
                     <td>{{ order.beden }}</td>
                     <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
                     <td>
-                        {% if order.qr_code %}
-                            <img class="qr-img" src="{{ order.qr_code.url }}" alt="QR Kod">
+                        {% if order.qr_code_url %}
+                            <img class="qr-img" src="{{ order.qr_code_url }}" alt="QR Kod">
                         {% else %}
                             <span class="text-muted small fst-italic">QR Yok</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if order.qr_code %}
+                        {% if order.qr_code_url %}
                             <button class="btn btn-sm btn-outline-secondary print-btn"
                                 onclick="printLabel(
                                     '{{ order.siparis_numarasi|escapejs }}',
                                     '{{ order.musteri|default_if_none:""|escapejs }}',
                                     '{{ order.urun_kodu|default_if_none:""|escapejs }}',
                                     '{{ order.adet|default_if_none:""|escapejs }}',
-                                    '{{ order.qr_code.url }}'
+                                    '{{ order.qr_code_url }}'
                                 )">
                                 🖨️ Yazdır
                             </button>
