@@ -5,8 +5,6 @@ from django.conf import settings
 import qrcode
 from io import BytesIO
 from django.core.files.base import ContentFile
-import os
-import shutil
 
 
 class Musteri(models.Model):
@@ -60,17 +58,15 @@ class Order(models.Model):
                 num = 1
             self.siparis_numarasi = f"{prefix}{num:04d}"
 
-        super().save(*args, **kwargs)  # önce kaydet ki pk oluşsun
+        # Önce kaydedip pk alalım
+        super().save(*args, **kwargs)
 
-        # 🌐 Ortama göre base URL seçimi
+        # 🌐 Ortama göre QR kod URL'si
         base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
         detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
-        print(f"🌍 QR için kullanılacak URL: {detail_url}")  # 🟡 DEBUG
 
-        # QR kod yoksa üret
+        # 🧠 QR kod daha önce oluşturulmadıysa bir kez üret
         if not self.qr_code:
-            print(f"🧠 QR kod üretiliyor → {self.siparis_numarasi}")  # 🟡 DEBUG
-
             qr = qrcode.QRCode(box_size=8, border=2)
             qr.add_data(detail_url)
             qr.make(fit=True)
@@ -81,21 +77,7 @@ class Order(models.Model):
             filename = f"qr_{self.pk}.png"
 
             self.qr_code.save(filename, ContentFile(buffer.getvalue()), save=False)
-            super().save(update_fields=["qr_code"])
-
-            print(f"✅ QR kod kaydedildi: media/qr_codes/{filename}")  # 🟢 DEBUG
-
-            # 📌 Geçici çözüm: static klasörüne kopyala
-            media_path = os.path.join(settings.MEDIA_ROOT, 'qr_codes', filename)
-            static_qr_dir = os.path.join(settings.BASE_DIR, 'static', 'qr_codes')
-            static_path = os.path.join(static_qr_dir, filename)
-
-            os.makedirs(static_qr_dir, exist_ok=True)
-            try:
-                shutil.copy(media_path, static_path)
-                print(f"📁 Static klasöre kopyalandı: {static_path}")
-            except Exception as e:
-                print(f"⚠️ Static'e kopyalama başarısız: {e}")
+            super().save(update_fields=["qr_code"])  # sadece qr_code alanını güncelle
 
     def __str__(self):
         return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
