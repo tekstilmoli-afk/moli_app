@@ -129,3 +129,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 SUPABASE_BUCKET_NAME = os.getenv('SUPABASE_BUCKET_NAME', 'qr-codes')
+
+BASE_URL = "https://moli-app.onrender.com"
