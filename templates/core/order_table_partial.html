@@ -122,27 +122,31 @@
                     {% endif %}
                 </td>
 
-                <!-- 📌 QR kod static yolundan -->
+                <!-- ✅ QR kod: Doğrudan modelden URL -->
                 <td>
                     {% if order.qr_code %}
-                        <img src="{% static 'qr_codes/qr_'|add:order.id|add:'.png' %}" alt="QR Kod" class="qr-img">
+                        <img src="{{ order.qr_code.url }}" alt="QR Kod" class="qr-img">
                     {% else %}
                         -
                     {% endif %}
                 </td>
 
-                <!-- 🖨️ Yazdır butonu -->
+                <!-- ✅ Yazdır butonu: sadece QR varsa göster -->
                 <td class="text-center">
-                    <button type="button" class="btn btn-outline-secondary print-btn"
-                        onclick="printLabel(
-                            '{{ order.siparis_numarasi|escapejs }}',
-                            '{{ order.musteri|default_if_none:""|escapejs }}',
-                            '{{ order.urun_kodu|default_if_none:""|escapejs }}',
-                            '{{ order.adet|default_if_none:""|escapejs }}',
-                            '{% if order.qr_code %}{% static "qr_codes/qr_"|add:order.id|add:".png" %}{% endif %}'
-                        )">
-                        🖨️
-                    </button>
+                    {% if order.qr_code %}
+                        <button type="button" class="btn btn-outline-secondary print-btn"
+                            onclick="printLabel(
+                                '{{ order.siparis_numarasi|escapejs }}',
+                                '{{ order.musteri|default_if_none:""|escapejs }}',
+                                '{{ order.urun_kodu|default_if_none:""|escapejs }}',
+                                '{{ order.adet|default_if_none:""|escapejs }}',
+                                '{{ order.qr_code.url }}'
+                            )">
+                            🖨️
+                        </button>
+                    {% else %}
+                        <span class="text-muted small fst-italic">-</span>
+                    {% endif %}
                 </td>
             </tr>
             {% empty %}
