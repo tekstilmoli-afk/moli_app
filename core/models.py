@@ -35,7 +35,7 @@ class Order(models.Model):
     aciklama = models.TextField(blank=True, null=True)
     resim = models.ImageField(upload_to='siparis_resimleri/', blank=True, null=True)
 
-    # ⬇️ Burayı değiştirdik — artık QR kod dosyası değil, URL saklıyoruz
+    # ⬇️ QR kod dosyası yerine sadece URL tutuluyor
     qr_code_url = models.URLField(blank=True, null=True)
 
     kesim_yapan = models.CharField(max_length=100, blank=True, null=True)
@@ -92,12 +92,13 @@ class Order(models.Model):
                 file_options={"content-type": "image/png"}
             )
 
-            if response.get("error") is None:
+            # ✅ Yeni SDK: response bir UploadResponse objesi → .error özelliği var
+            if not response.error:
                 public_url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(filename)
                 self.qr_code_url = public_url
                 super().save(update_fields=["qr_code_url"])
             else:
-                print("⚠️ Supabase upload error:", response.get("error"))
+                print("⚠️ Supabase upload error:", response.error)
 
     def __str__(self):
         return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
