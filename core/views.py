@@ -90,8 +90,8 @@ def order_list(request):
     context = {
         "orders": page_obj,
         "q": request.GET.get("q", "").strip(),
-        "current_sort": current_sort,  # 👈 EKLENDİ
-        "current_dir": current_dir,    # 👈 EKLENDİ
+        "current_sort": current_sort,
+        "current_dir": current_dir,
         "tip_options": Order.objects.values_list("siparis_tipi", flat=True).distinct(),
         "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct(),
         "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct(),
@@ -194,3 +194,21 @@ def export_orders_excel(request):
     response["Content-Disposition"] = 'attachment; filename="siparisler.xlsx"'
     wb.save(response)
     return response
+
+
+# 🧠 Müşteri arama (Select2 autocomplete için)
+def musteri_search(request):
+    q = request.GET.get("q", "").strip()
+    results = []
+    if q:
+        matches = Musteri.objects.filter(ad__icontains=q).order_by("ad")[:20]
+    else:
+        matches = Musteri.objects.all().order_by("ad")[:20]
+
+    for m in matches:
+        results.append({
+            "id": m.ad,
+            "text": m.ad
+        })
+
+    return JsonResponse(results, safe=False)

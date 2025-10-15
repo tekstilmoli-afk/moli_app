@@ -156,11 +156,13 @@
                         {% if order.qr_code_url %}
                             <button class="btn btn-sm btn-outline-secondary print-btn"
                                 onclick="printLabel(
+                                    '{{ order.qr_code_url }}',
                                     '{{ order.siparis_numarasi|escapejs }}',
-                                    '{{ order.musteri|default_if_none:""|escapejs }}',
-                                    '{{ order.urun_kodu|default_if_none:""|escapejs }}',
-                                    '{{ order.adet|default_if_none:""|escapejs }}',
-                                    '{{ order.qr_code_url }}'
+                                    '{{ order.siparis_tipi|escapejs }}',
+                                    '{{ order.musteri|escapejs }}',
+                                    '{{ order.urun_kodu|escapejs }}',
+                                    '{{ order.renk|escapejs }}',
+                                    '{{ order.beden|escapejs }}'
                                 )">
                                 🖨️ Yazdır
                             </button>
@@ -194,6 +196,68 @@ document.addEventListener('DOMContentLoaded', function () {
     sel.addEventListener('change', () => form.submit());
   });
 });
+
+// 🏷️ Etiket Yazdırma
+function printLabel(qrUrl, siparisNo, tipi, musteri, urunKodu, renk, beden) {
+    const printWindow = window.open('', '_blank', 'width=400,height=250');
+    printWindow.document.open();
+    printWindow.document.write(`
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Etiket Yazdır</title>
+            <style>
+                body {
+                    margin: 0;
+                    padding: 10px;
+                    font-family: Arial, sans-serif;
+                    font-size: 11px;
+                }
+                .etiket {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: center;
+                    justify-content: flex-start;
+                    width: 100%;
+                }
+                .etiket img {
+                    width: 80px;
+                    height: 80px;
+                    margin-right: 8px;
+                }
+                .etiket-bilgi {
+                    line-height: 1.2;
+                    flex: 1;
+                }
+                @media print {
+                    body {
+                        width: 100mm;
+                        height: 50mm;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="etiket">
+                <img src="${qrUrl}" alt="QR">
+                <div class="etiket-bilgi">
+                    <div><strong>${siparisNo}</strong> (${tipi})</div>
+                    <div>${musteri}</div>
+                    <div>${urunKodu}</div>
+                    <div>${renk} / ${beden}</div>
+                </div>
+            </div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                    window.onafterprint = function() { window.close(); }
+                }
+            <\/script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
 </script>
 
 </body>

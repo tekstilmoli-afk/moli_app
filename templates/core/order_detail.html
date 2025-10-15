@@ -10,8 +10,35 @@
         .label { font-weight: 600; }
         .print-btn { float: right; }
         @media print {
-            .no-print { display: none; }
-            body { background: white !important; }
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+        /* Etiket görünümü */
+        #print-area {
+            padding: 10px;
+            font-size: 14px;
+        }
+        .etiket-qr {
+            max-width: 120px;
+            max-height: 120px;
+        }
+        .etiket-table td {
+            padding: 2px 4px;
+            vertical-align: top;
+        }
+        .etiket-table .label {
+            width: 100px;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -22,6 +49,34 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">📦 Sipariş Detayı</h2>
             <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
+        </div>
+
+        <hr>
+
+        <!-- 🏷️ Yazdırılacak Alan -->
+        <div id="print-area">
+            <div class="row align-items-center">
+                <!-- QR Kodu -->
+                <div class="col-4 text-center">
+                    {% if order.qr_code_url %}
+                        <img src="{{ order.qr_code_url }}" alt="QR Kod" class="etiket-qr mb-2">
+                    {% else %}
+                        <span class="text-muted">QR Yok</span>
+                    {% endif %}
+                </div>
+
+                <!-- Sipariş Bilgileri -->
+                <div class="col-8">
+                    <table class="etiket-table w-100">
+                        <tr><td class="label">Sipariş No:</td><td>{{ order.siparis_numarasi }}</td></tr>
+                        <tr><td class="label">Müşteri:</td><td>{{ order.musteri }}</td></tr>
+                        <tr><td class="label">Ürün Kodu:</td><td>{{ order.urun_kodu }}</td></tr>
+                        <tr><td class="label">Renk:</td><td>{{ order.renk }}</td></tr>
+                        <tr><td class="label">Beden:</td><td>{{ order.beden }}</td></tr>
+                        <tr><td class="label">Adet:</td><td>{{ order.adet }}</td></tr>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <hr>
@@ -67,11 +122,8 @@
 
             <div class="col-md-6 mb-3">
                 <span class="label">QR Kod:</span><br>
-                {% if order.qr_code %}
-                    <img src="{% static 'qr_codes/qr_'|add:order.id|add:'.png' %}" 
-                         alt="QR Kod" 
-                         class="img-fluid rounded shadow-sm mt-2" 
-                         style="max-height: 180px;">
+                {% if order.qr_code_url %}
+                    <img src="{{ order.qr_code_url }}" alt="QR Kod" class="img-fluid rounded shadow-sm mt-2" style="max-height: 180px;">
                 {% else %}
                     <span class="text-muted">Yok</span>
                 {% endif %}

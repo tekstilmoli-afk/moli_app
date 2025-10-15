@@ -20,6 +20,9 @@ urlpatterns = [
 
     # 📤 Excel aktarımı
     path("export/excel/", views.export_orders_excel, name="export_orders_excel"),
+
+    # 🧠 Müşteri arama (Select2 autocomplete için)
+    path("api/musteri-search/", views.musteri_search, name="musteri_search"),
 ]
 
 # 📌 Statik dosyalar (CSS, JS) için ayar
