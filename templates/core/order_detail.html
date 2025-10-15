@@ -9,20 +9,14 @@
     <style>
         .label { font-weight: 600; }
         .print-btn { float: right; }
+
+        /* 📝 Yazdırma: sadece butonları gizle, sayfanın tamamını bastır */
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #print-area, #print-area * {
-                visibility: visible;
-            }
-            #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
+            .no-print {
+                display: none !important;
             }
         }
+
         /* Etiket görünümü */
         #print-area {
             padding: 10px;
@@ -48,13 +42,13 @@
     <div class="card shadow-lg mx-auto p-4" style="max-width: 750px;">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="mb-0">📦 Sipariş Detayı</h2>
-            <!-- ✅ Yazdır butonu: sadece sayfanın kendi çıktısını alır -->
+            <!-- ✅ Yazdır butonu: sayfanın tamamını bastırır -->
             <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
         </div>
 
         <hr>
 
-        <!-- 🏷️ Yazdırılacak Alan -->
+        <!-- 🏷️ Yazdırılacak Alan (sayfa içeriğinde kalır ama yazdırmayı sınırlamaz) -->
         <div id="print-area">
             <div class="row align-items-center">
                 <!-- QR Kodu -->
