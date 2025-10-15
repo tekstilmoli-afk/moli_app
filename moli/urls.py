@@ -2,8 +2,14 @@ from django.contrib import admin
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
-from core import views  # ✅ Core içindeki view'ları kullanmak için gerekli
-from django.contrib.auth import views as auth_views  # 👈 Login & logout için eklendi
+from core import views
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+
+# 👇 GET isteğini de destekleyen logout fonksiyonu
+def logout_view(request):
+    logout(request)
+    return redirect('/login/')
 
 urlpatterns = [
     # 🧭 Admin paneli
@@ -26,8 +32,8 @@ urlpatterns = [
     path("api/musteri-search/", views.musteri_search, name="musteri_search"),
 
     # 🔐 Login / Logout işlemleri
-    path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
-    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("login/", views.custom_login, name="login"),  # ✅ Özel login sayfası
+    path("logout/", logout_view, name="logout"),       # ✅ GET logout
 ]
 
 # 📌 Statik dosyalar (CSS, JS) için ayar

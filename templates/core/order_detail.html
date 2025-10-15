@@ -34,6 +34,15 @@
 </head>
 <body class="bg-light py-5">
 
+{% if user.is_authenticated %}
+<div class="container mb-3 no-print">
+    <div class="d-flex justify-content-end">
+        <span class="me-2">👤 {{ user.username }}</span>
+        <a href="{% url 'logout' %}" class="btn btn-sm btn-danger">Çıkış Yap</a>
+    </div>
+</div>
+{% endif %}
+
 <div class="container">
     <div class="card shadow-lg mx-auto p-4" style="max-width: 750px;">
         <div class="d-flex justify-content-between align-items-center mb-3">

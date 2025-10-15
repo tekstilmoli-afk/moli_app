@@ -3,14 +3,16 @@ from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
-from django.contrib.auth.decorators import login_required  # 👈 EKLENDİ
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login
+from django.views.decorators.csrf import csrf_exempt
 from openpyxl import Workbook
 
 from .models import Order, Musteri
 from .forms import OrderForm, MusteriForm
 
 
-# 🧠 Ortak filtreleme fonksiyonu (hem liste hem Excel export için kullanılıyor)
+# 🧠 Ortak filtreleme fonksiyonu
 def apply_filters(request, qs):
     q = request.GET.get("q", "").strip()
     if q:
@@ -50,7 +52,7 @@ def apply_filters(request, qs):
     return qs
 
 
-# 📋 Sipariş Listeleme (Artık cache yok, login zorunlu)
+# 📋 Sipariş Listeleme
 @login_required
 def order_list(request):
     qs = (
@@ -72,38 +74,11 @@ def order_list(request):
     if not qs.query.order_by:
         qs = qs.order_by('-id')
 
-    current_sort = request.GET.get("sort")
-    current_dir = request.GET.get("dir", "asc")
-
     paginator = Paginator(qs, 50)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    context = {
-        "orders": page_obj,
-        "q": request.GET.get("q", "").strip(),
-        "current_sort": current_sort,
-        "current_dir": current_dir,
-        "tip_options": Order.objects.values_list("siparis_tipi", flat=True).distinct(),
-        "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct(),
-        "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct(),
-        "renk_options": Order.objects.values_list("renk", flat=True).distinct(),
-        "beden_options": Order.objects.values_list("beden", flat=True).distinct(),
-        "adet_options": Order.objects.values_list("adet", flat=True).distinct(),
-        "sip_tarih_options": Order.objects.values_list("siparis_tarihi", flat=True).distinct(),
-        "tes_tarih_options": Order.objects.values_list("teslim_tarihi", flat=True).distinct(),
-        "aciklama_options": Order.objects.values_list("aciklama", flat=True).distinct(),
-        "tip_selected": request.GET.getlist("siparis_tipi"),
-        "musteri_selected": request.GET.getlist("musteri"),
-        "urun_selected": request.GET.getlist("urun_kodu"),
-        "renk_selected": request.GET.getlist("renk"),
-        "beden_selected": request.GET.getlist("beden"),
-    }
-
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        html = render_to_string("core/order_table_partial.html", context, request=request)
-        return JsonResponse({"html": html})
-
+    context = {"orders": page_obj}
     return render(request, "core/order_list.html", context)
 
 
@@ -184,7 +159,7 @@ def export_orders_excel(request):
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response["Content-Disposition"] = 'attachment; filename=\"siparisler.xlsx\"'
+    response["Content-Disposition"] = 'attachment; filename="siparisler.xlsx"'
     wb.save(response)
     return response
 
@@ -206,3 +181,28 @@ def musteri_search(request):
         })
 
     return JsonResponse(results, safe=False)
+
+
+# 🔐 Özel Login Sayfası (sadece şifre alanı)
+@csrf_exempt
+def custom_login(request):
+    if request.method == "POST":
+        password = request.POST.get("password", "").strip()
+
+        from django.contrib.auth.models import User
+        users = User.objects.all()
+        authenticated_user = None
+
+        for u in users:
+            user = authenticate(username=u.username, password=password)
+            if user:
+                authenticated_user = user
+                break
+
+        if authenticated_user:
+            login(request, authenticated_user)
+            return redirect("/")
+        else:
+            return render(request, "registration/custom_login.html", {"error": True})
+
+    return render(request, "registration/custom_login.html")
