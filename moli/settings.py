@@ -33,18 +33,19 @@ INSTALLED_APPS = [
     'core',
 ]
 
-# 🌐 Middleware sırası
+# 🌐 Middleware sırası — ✅ DÜZELTİLMİŞ
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ✅ Statik dosyaları production'da servis eder
-    'django.middleware.cache.UpdateCacheMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.cache.FetchFromCacheMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # ⬅️ Giriş kontrolü cache'ten önce
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # ⬇️ Cache middleware'leri en alta
+    'django.middleware.cache.UpdateCacheMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',
 ]
 
 # 📌 URL ve WSGI ayarları
@@ -54,7 +55,7 @@ ROOT_URLCONF = 'moli.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / "templates"],  # 👉 templates klasörünü gösteriyoruz
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -92,7 +93,7 @@ TIME_ZONE = 'Europe/Istanbul'
 USE_I18N = True
 USE_TZ = True
 
-# 🧠 Cache (isteğe bağlı basit yapı)
+# 🧠 Cache
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
@@ -105,11 +106,11 @@ CACHE_MIDDLEWARE_KEY_PREFIX = ''
 # 🧰 Statik dosyalar
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
-    BASE_DIR / "static",  # Proje içindeki static klasörü
+    BASE_DIR / "static",
 ]
-STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic çıktısı buraya gider
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# 📂 Medya dosyaları (örneğin yüklenen resimler, QR kodlar)
+# 📂 Medya dosyaları
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -117,7 +118,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# 👤 Oturum yönlendirmeleri (opsiyonel)
+# 👤 Giriş / çıkış yönlendirmeleri
 LOGIN_URL = "/login/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/login/"
@@ -133,11 +134,5 @@ SUPABASE_BUCKET_NAME = os.getenv('SUPABASE_BUCKET_NAME', 'qr-codes')
 BASE_URL = "https://moli-app.onrender.com"
 
 # 🧭 Oturum ayarları (15 dakika)
-SESSION_COOKIE_AGE = 15 * 60  # 15 dakika (saniye cinsinden)
-
-# Tarayıcı kapandığında otomatik çıkış
+SESSION_COOKIE_AGE = 15 * 60  # 15 dakika
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-
-# Giriş / çıkış yönlendirmeleri
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/login/'

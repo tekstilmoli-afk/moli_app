@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
-from django.views.decorators.cache import cache_page
+from django.contrib.auth.decorators import login_required  # 👈 EKLENDİ
 from openpyxl import Workbook
 
 from .models import Order, Musteri
@@ -12,7 +12,6 @@ from .forms import OrderForm, MusteriForm
 
 # 🧠 Ortak filtreleme fonksiyonu (hem liste hem Excel export için kullanılıyor)
 def apply_filters(request, qs):
-    # 🔍 Genel arama
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(
@@ -28,7 +27,6 @@ def apply_filters(request, qs):
             Q(aciklama__icontains=q)
         )
 
-    # 🧰 Filtreler
     filter_fields = {
         "siparis_tipi__in": request.GET.getlist("siparis_tipi"),
         "musteri__ad__in": request.GET.getlist("musteri"),
@@ -44,7 +42,6 @@ def apply_filters(request, qs):
         if value:
             qs = qs.filter(**{field: value})
 
-    # ⬆️ Sıralama
     sort_col = request.GET.get("sort")
     sort_dir = request.GET.get("dir", "asc")
     if sort_col:
@@ -53,10 +50,9 @@ def apply_filters(request, qs):
     return qs
 
 
-# 📋 Sipariş Listeleme (AJAX + Cache + Sayfalama + Sıralama)
-@cache_page(60)
+# 📋 Sipariş Listeleme (Artık cache yok, login zorunlu)
+@login_required
 def order_list(request):
-    # 🌿 Sorgu
     qs = (
         Order.objects.select_related("musteri")
         .only(
@@ -73,20 +69,16 @@ def order_list(request):
 
     qs = apply_filters(request, qs)
 
-    # ⚠️ Sıralama yapılmamışsa varsayılan olarak -id sıralaması ekle
     if not qs.query.order_by:
         qs = qs.order_by('-id')
 
-    # ⬇️ Şu anki sıralama parametrelerini al
     current_sort = request.GET.get("sort")
     current_dir = request.GET.get("dir", "asc")
 
-    # 📄 Sayfalama
     paginator = Paginator(qs, 50)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    # 🔽 Dropdown filtre seçenekleri
     context = {
         "orders": page_obj,
         "q": request.GET.get("q", "").strip(),
@@ -108,16 +100,15 @@ def order_list(request):
         "beden_selected": request.GET.getlist("beden"),
     }
 
-    # ⚡ AJAX isteği → sadece tabloyu gönder
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         html = render_to_string("core/order_table_partial.html", context, request=request)
         return JsonResponse({"html": html})
 
-    # 🌍 Normal sayfa
     return render(request, "core/order_list.html", context)
 
 
 # ➕ Yeni Sipariş
+@login_required
 def order_create(request):
     if request.method == "POST":
         form = OrderForm(request.POST, request.FILES)
@@ -130,6 +121,7 @@ def order_create(request):
 
 
 # 📌 Sipariş Detay
+@login_required
 def order_detail(request, pk):
     order = get_object_or_404(
         Order.objects.select_related("musteri").only(
@@ -148,6 +140,7 @@ def order_detail(request, pk):
 
 
 # 👤 Yeni Müşteri
+@login_required
 def musteri_create(request):
     if request.method == "POST":
         form = MusteriForm(request.POST)
@@ -159,11 +152,11 @@ def musteri_create(request):
     return render(request, "core/musteri_form.html", {"form": form})
 
 
-# 📊 Excel çıktı alma (filtrelerle senkronize)
+# 📊 Excel çıktı alma
+@login_required
 def export_orders_excel(request):
     qs = apply_filters(request, Order.objects.select_related("musteri"))
 
-    # 📘 Excel oluştur
     wb = Workbook()
     ws = wb.active
     ws.title = "Siparişler"
@@ -191,12 +184,13 @@ def export_orders_excel(request):
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response["Content-Disposition"] = 'attachment; filename="siparisler.xlsx"'
+    response["Content-Disposition"] = 'attachment; filename=\"siparisler.xlsx\"'
     wb.save(response)
     return response
 
 
-# 🧠 Müşteri arama (Select2 autocomplete için)
+# 🧠 Müşteri arama
+@login_required
 def musteri_search(request):
     q = request.GET.get("q", "").strip()
     results = []
