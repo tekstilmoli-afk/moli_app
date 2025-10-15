@@ -3,6 +3,7 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from core import views  # ✅ Core içindeki view'ları kullanmak için gerekli
+from django.contrib.auth import views as auth_views  # 👈 Login & logout için eklendi
 
 urlpatterns = [
     # 🧭 Admin paneli
@@ -23,6 +24,10 @@ urlpatterns = [
 
     # 🧠 Müşteri arama (Select2 autocomplete için)
     path("api/musteri-search/", views.musteri_search, name="musteri_search"),
+
+    # 🔐 Login / Logout işlemleri
+    path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
+    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
 ]
 
 # 📌 Statik dosyalar (CSS, JS) için ayar
