@@ -131,3 +131,13 @@ SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 SUPABASE_BUCKET_NAME = os.getenv('SUPABASE_BUCKET_NAME', 'qr-codes')
 
 BASE_URL = "https://moli-app.onrender.com"
+
+# 🧭 Oturum ayarları (15 dakika)
+SESSION_COOKIE_AGE = 15 * 60  # 15 dakika (saniye cinsinden)
+
+# Tarayıcı kapandığında otomatik çıkış
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Giriş / çıkış yönlendirmeleri
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/login/'
