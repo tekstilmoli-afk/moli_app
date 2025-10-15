@@ -17,11 +17,7 @@
             }
         }
 
-        /* Etiket görünümü */
-        #print-area {
-            padding: 10px;
-            font-size: 14px;
-        }
+        /* Etiket görünümü (artık detayda kullanılmıyor ama diğer stiller bozulmasın diye bıraktık) */
         .etiket-qr {
             max-width: 120px;
             max-height: 120px;
@@ -44,34 +40,6 @@
             <h2 class="mb-0">📦 Sipariş Detayı</h2>
             <!-- ✅ Yazdır butonu: sayfanın tamamını bastırır -->
             <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
-        </div>
-
-        <hr>
-
-        <!-- 🏷️ Yazdırılacak Alan (sayfa içeriğinde kalır ama yazdırmayı sınırlamaz) -->
-        <div id="print-area">
-            <div class="row align-items-center">
-                <!-- QR Kodu -->
-                <div class="col-4 text-center">
-                    {% if order.qr_code_url %}
-                        <img src="{{ order.qr_code_url }}" alt="QR Kod" class="etiket-qr mb-2">
-                    {% else %}
-                        <span class="text-muted">QR Yok</span>
-                    {% endif %}
-                </div>
-
-                <!-- Sipariş Bilgileri -->
-                <div class="col-8">
-                    <table class="etiket-table w-100">
-                        <tr><td class="label">Sipariş No:</td><td>{{ order.siparis_numarasi }}</td></tr>
-                        <tr><td class="label">Müşteri:</td><td>{{ order.musteri }}</td></tr>
-                        <tr><td class="label">Ürün Kodu:</td><td>{{ order.urun_kodu }}</td></tr>
-                        <tr><td class="label">Renk:</td><td>{{ order.renk }}</td></tr>
-                        <tr><td class="label">Beden:</td><td>{{ order.beden }}</td></tr>
-                        <tr><td class="label">Adet:</td><td>{{ order.adet }}</td></tr>
-                    </table>
-                </div>
-            </div>
         </div>
 
         <hr>
