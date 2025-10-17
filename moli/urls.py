@@ -23,7 +23,8 @@ urlpatterns = [
     path("order/<int:pk>/", views.order_detail, name="order_detail"),
 
     # 🧱 Üretim aşamalarını güncelleme (butonlar için)
-    path("orders/<int:pk>/update/", views.update_stage, name="update_stage"),  # 👈 EKLENDİ
+    path("orders/<int:pk>/update/", views.update_stage, name="update_stage"),  # 👈 mevcut
+    path("orders/<int:pk>/delete/", views.order_delete, name="order_delete"),  # 🗑️ SİLME URL'İ
 
     # 👤 Müşteri işlemleri
     path("musteri/new/", views.musteri_create, name="musteri_create"),

@@ -222,3 +222,15 @@ def update_stage(request, pk):
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
     html = render_to_string("core/_uretim_paneli.html", {"order": order, "events": events})
     return HttpResponse(html)
+
+
+# 🗑️ Sipariş Silme — Sadeleştirilmiş (POST yeterli)
+@login_required
+def order_delete(request, pk):
+    if not request.user.is_staff:
+        return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
+    if request.method == "POST":
+        order = get_object_or_404(Order, pk=pk)
+        order.delete()
+        return HttpResponse(status=204)
+    return HttpResponse(status=405)
