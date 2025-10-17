@@ -1,0 +1,119 @@
+<hr>
+<h3>📜 Üretim Geçmişi</h3>
+
+{% if events %}
+    <ul id="gecmis-listesi" class="list-unstyled">
+        {% for e in events %}
+            <li class="gecmis-item py-1 border-bottom">
+                <strong>{{ e.stage|title }}</strong> → {{ e.value|title }}
+                — <em>{{ e.timestamp|date:"d.m.Y H:i" }}</em>
+                — {{ e.user }}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>Henüz geçmiş kaydı yok.</p>
+{% endif %}
+
+<hr>
+<h4>🧱 Aşama Butonları</h4>
+
+<div class="stage-buttons">
+    <!-- KESİM -->
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="kesim_durum">
+        <input type="hidden" name="value" value="basladi">
+        <button class="btn btn-sm btn-primary">✂️ Kesim Başladı</button>
+    </form>
+
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="kesim_durum">
+        <input type="hidden" name="value" value="bitti">
+        <button class="btn btn-sm btn-success">✂️ Kesim Bitti</button>
+    </form>
+
+    <!-- DİKİM -->
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="dikim_durum">
+        <input type="hidden" name="value" value="basladi">
+        <button class="btn btn-sm btn-primary">🧵 Dikim Başladı</button>
+    </form>
+
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="dikim_durum">
+        <input type="hidden" name="value" value="bitti">
+        <button class="btn btn-sm btn-success">🧵 Dikim Bitti</button>
+    </form>
+
+    <!-- NAKIŞ -->
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="nakis_durumu">
+        <input type="hidden" name="value" value="verildi">
+        <button class="btn btn-sm btn-warning">🪡 Nakış Verildi</button>
+    </form>
+
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="nakis_durumu">
+        <input type="hidden" name="value" value="alindi">
+        <button class="btn btn-sm btn-info">🪡 Nakış Alındı</button>
+    </form>
+
+    <!-- SÜSLEME -->
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="susleme_durum">
+        <input type="hidden" name="value" value="basladi">
+        <button class="btn btn-sm btn-primary">✨ Süsleme Başladı</button>
+    </form>
+
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="susleme_durum">
+        <input type="hidden" name="value" value="bitti">
+        <button class="btn btn-sm btn-success">✨ Süsleme Bitti</button>
+    </form>
+
+    <!-- HAZIR -->
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="hazir_durum">
+        <input type="hidden" name="value" value="bitti">
+        <button class="btn btn-sm btn-success">📦 Hazırlandı</button>
+    </form>
+
+    <!-- SEVKİYAT -->
+    <form hx-get="{% url 'update_stage' order.id %}" 
+          hx-target="#uretim-paneli" 
+          hx-swap="innerHTML transition:true">
+        <input type="hidden" name="stage" value="sevkiyat_durum">
+        <input type="hidden" name="value" value="gonderildi">
+        <button class="btn btn-sm btn-dark">🚚 Gönderildi</button>
+    </form>
+</div>
+
+<!-- ✨ Yeni geçmiş satırı eklendiğinde aşağı kaydırma efekti -->
+<script>
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.target.id === 'uretim-paneli') {
+            const list = document.getElementById('gecmis-listesi');
+            if (list) {
+                list.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    });
+</script>

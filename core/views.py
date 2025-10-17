@@ -1,14 +1,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 from openpyxl import Workbook
 
-from .models import Order, Musteri
+from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent
 from .forms import OrderForm, MusteriForm
 
 
@@ -95,25 +96,6 @@ def order_create(request):
     return render(request, "core/order_form.html", {"form": form})
 
 
-# 📌 Sipariş Detay
-@login_required
-def order_detail(request, pk):
-    order = get_object_or_404(
-        Order.objects.select_related("musteri").only(
-            "id", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk", "beden",
-            "adet", "siparis_tarihi", "teslim_tarihi", "aciklama",
-            "musteri__ad", "qr_code_url", "resim",
-            "kesim_yapan", "kesim_tarihi",
-            "dikim_yapan", "dikim_tarihi",
-            "susleme_yapan", "susleme_tarihi",
-            "hazir_yapan", "hazir_tarihi",
-            "sevkiyat_yapan", "sevkiyat_tarihi",
-        ),
-        pk=pk
-    )
-    return render(request, "core/order_detail.html", {"order": order})
-
-
 # 👤 Yeni Müşteri
 @login_required
 def musteri_create(request):
@@ -127,63 +109,47 @@ def musteri_create(request):
     return render(request, "core/musteri_form.html", {"form": form})
 
 
-# 📊 Excel çıktı alma
-@login_required
-def export_orders_excel(request):
-    qs = apply_filters(request, Order.objects.select_related("musteri"))
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Siparişler"
-
-    headers = [
-        "Sipariş No", "Sipariş Tipi", "Müşteri", "Ürün Kodu", "Renk",
-        "Beden", "Adet", "Sipariş Tarihi", "Teslim Tarihi", "Açıklama"
-    ]
-    ws.append(headers)
-
-    for order in qs:
-        ws.append([
-            order.siparis_numarasi,
-            order.siparis_tipi,
-            order.musteri.ad if order.musteri else "",
-            order.urun_kodu,
-            order.renk or "",
-            order.beden or "",
-            order.adet,
-            order.siparis_tarihi.strftime("%d.%m.%Y") if order.siparis_tarihi else "",
-            order.teslim_tarihi.strftime("%d.%m.%Y") if order.teslim_tarihi else "",
-            order.aciklama or "",
-        ])
-
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    response["Content-Disposition"] = 'attachment; filename="siparisler.xlsx"'
-    wb.save(response)
-    return response
-
-
-# 🧠 Müşteri arama
+# 🧠 Müşteri arama (autocomplete)
 @login_required
 def musteri_search(request):
-    q = request.GET.get("q", "").strip()
-    results = []
-    if q:
-        matches = Musteri.objects.filter(ad__icontains=q).order_by("ad")[:20]
+    term = request.GET.get("term", "")
+    qs = Musteri.objects.filter(ad__icontains=term).values_list("ad", flat=True)[:20]
+    return JsonResponse(list(qs), safe=False)
+
+
+# 📌 Sipariş Detay (Geçmiş Dahil)
+@login_required
+def order_detail(request, pk):
+    order = get_object_or_404(Order.objects.select_related("musteri"), pk=pk)
+    nakisciler = Nakisci.objects.all()
+    fasoncular = Fasoncu.objects.all()
+    events = OrderEvent.objects.filter(order=order).order_by("timestamp")
+
+    if request.user.is_staff:
+        allowed = {
+            'kesim_durum','dikim_durum','susleme_durum','hazir_durum','sevkiyat_durum',
+            'dikim_fason','dikim_fasoncu','dikim_fason_durumu',
+            'susleme_fason','susleme_fasoncu','susleme_fason_durumu',
+            'nakis_durumu','nakisci',
+        }
     else:
-        matches = Musteri.objects.all().order_by("ad")[:20]
+        allowed = {
+            'dikim_durum','nakis_durumu','nakisci',
+            'susleme_durum','dikim_fason','dikim_fasoncu','dikim_fason_durumu',
+            'susleme_fason','susleme_fasoncu','susleme_fason_durumu',
+        }
 
-    for m in matches:
-        results.append({
-            "id": m.ad,
-            "text": m.ad
-        })
+    return render(request, "core/order_detail.html", {
+        "order": order,
+        "nakisciler": nakisciler,
+        "fasoncular": fasoncular,
+        "allowed": allowed,
+        "is_admin": request.user.is_staff,
+        "events": events
+    })
 
-    return JsonResponse(results, safe=False)
 
-
-# 🔐 Özel Login Sayfası (sadece şifre alanı)
+# 🔐 Özel Login
 @csrf_exempt
 def custom_login(request):
     if request.method == "POST":
@@ -206,3 +172,37 @@ def custom_login(request):
             return render(request, "registration/custom_login.html", {"error": True})
 
     return render(request, "registration/custom_login.html")
+
+
+# ✍️ Üretim aşamalarını güncelleyen view + geçmiş kaydı
+@login_required
+def update_stage(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+    stage = request.GET.get('stage') or request.POST.get('stage')
+    value = request.GET.get('value') or request.POST.get('value')
+
+    if not stage or not value:
+        return HttpResponseForbidden('Eksik veri')
+
+    print("🟡 STAGE DEĞERİ:", stage)
+    print("🟡 VALUE DEĞERİ:", value)
+
+    username = request.user.username
+    now = timezone.now()
+
+    # Geçmiş kaydı ekle
+    OrderEvent.objects.create(
+        order=order,
+        user=username,
+        stage=stage,
+        value=value,
+        timestamp=now
+    )
+
+    # Veritabanını anında güncelle
+    order.refresh_from_db()
+
+    # Paneli tekrar render et (geçmiş dahil)
+    events = OrderEvent.objects.filter(order=order).order_by("timestamp")
+    html = render_to_string("core/_uretim_paneli.html", {"order": order, "events": events})
+    return HttpResponse(html)
