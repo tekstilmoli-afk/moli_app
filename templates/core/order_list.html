@@ -1,3 +1,218 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Sipariş Listesi</title>
+
+    <!-- 🚫 Tarayıcı Cache'i Kapat -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 30px;
+        }
+        h2 {
+            font-weight: 600;
+        }
+        .qr-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+            text-align: center;
+            font-size: 13px;
+        }
+        .print-btn {
+            font-size: 12px;
+        }
+        .filter-input {
+            width: 100%;
+            font-size: 12px;
+            padding: 3px 5px;
+            box-sizing: border-box;
+        }
+        .status-cell {
+            font-weight: 600;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+{% if user.is_authenticated %}
+<div class="d-flex justify-content-end mb-3">
+    <span class="me-2">👤 {{ user.username }}</span>
+    <a href="{% url 'logout' %}" class="btn btn-sm btn-danger">Çıkış Yap</a>
+</div>
+{% endif %}
+
+<div class="container">
+    <!-- Üst başlık ve butonlar -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📋 Sipariş Listesi</h2>
+        <div class="d-flex gap-2">
+            <a href="{% url 'order_create' %}" class="btn btn-success btn-sm">🟢 Yeni Sipariş Ekle</a>
+            <a href="{% url 'musteri_create' %}" class="btn btn-primary btn-sm">👤 Müşteri Ekle</a>
+            <a href="/" class="btn btn-outline-secondary btn-sm">Ana Sayfa</a>
+        </div>
+    </div>
+
+    <!-- 🔽 Filtre Alanı -->
+    <form id="filterForm" method="get" class="card card-body p-3 mb-3 shadow-sm">
+      <div class="row g-2">
+        <!-- Genel arama -->
+        <div class="col-12 col-md-3">
+          <label class="form-label mb-1">Genel Arama</label>
+          <input name="q" value="{{ q }}" class="form-control form-control-sm"
+                 placeholder="Sipariş no, ürün, renk, açıklama...">
+        </div>
+
+        <!-- Sipariş Tipi (multi) -->
+        <div class="col-6 col-md-2">
+          <label class="form-label mb-1">Sipariş Tipi</label>
+          <select name="siparis_tipi" multiple class="form-select form-select-sm" size="2">
+            {% for v in tip_options %}
+              <option value="{{ v }}" {% if v in tip_selected %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Müşteri (multi) -->
+        <div class="col-6 col-md-2">
+          <label class="form-label mb-1">Müşteri</label>
+          <select name="musteri" multiple class="form-select form-select-sm" size="6">
+            {% for v in musteri_options %}
+              <option value="{{ v }}" {% if v in musteri_selected %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Ürün Kodu (multi) -->
+        <div class="col-6 col-md-2">
+          <label class="form-label mb-1">Ürün Kodu</label>
+          <select name="urun_kodu" multiple class="form-select form-select-sm" size="6">
+            {% for v in urun_options %}
+              <option value="{{ v }}" {% if v in urun_selected %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Renk (multi) -->
+        <div class="col-6 col-md-2">
+          <label class="form-label mb-1">Renk</label>
+          <select name="renk" multiple class="form-select form-select-sm" size="6">
+            {% for v in renk_options %}
+              <option value="{{ v }}" {% if v in renk_selected %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Beden (multi) -->
+        <div class="col-6 col-md-1">
+          <label class="form-label mb-1">Beden</label>
+          <select name="beden" multiple class="form-select form-select-sm" size="6">
+            {% for v in beden_options %}
+              <option value="{{ v }}" {% if v in beden_selected %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 mt-3">
+        <button type="submit" class="btn btn-sm btn-primary">Filtrele</button>
+        <a href="{% url 'order_list' %}" class="btn btn-sm btn-outline-secondary">Filtreleri Temizle</a>
+      </div>
+    </form>
+
+    <!-- Sipariş tablosu -->
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-striped table-bordered table-hover align-middle table-sm">
+            <thead class="table-dark">
+                <tr>
+                    <th>Sipariş No</th>
+                    <th>Müşteri</th>
+                    <th>Ürün Kodu</th>
+                    <th>Adet</th>
+                    <th>Renk</th>
+                    <th>Beden</th>
+                    <th>Teslim Tarihi</th>
+                    <th>Son Durum</th>
+                    <th>QR Kod</th>
+                    <th>Etiket</th>
+                    <th>Detay</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.siparis_numarasi }}</td>
+                    <td>{{ order.musteri }}</td>
+                    <td>{{ order.urun_kodu }}</td>
+                    <td>{{ order.adet }}</td>
+                    <td>{{ order.renk }}</td>
+                    <td>{{ order.beden }}</td>
+                    <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
+                    <td class="status-cell">
+                        {% if order.last_event %}
+                            {{ order.last_event.stage|title }} → {{ order.last_event.value|title }}
+                            <br><small class="text-muted">{{ order.last_event.timestamp|date:"d.m.Y H:i" }}</small>
+                        {% else %}
+                            <span class="text-muted fst-italic">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if order.qr_code_url %}
+                            <img class="qr-img" src="{{ order.qr_code_url }}" alt="QR Kod">
+                        {% else %}
+                            <span class="text-muted small fst-italic">QR Yok</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if order.qr_code_url %}
+                            <button class="btn btn-sm btn-outline-secondary print-btn"
+                                onclick="printLabel(
+                                    '{{ order.qr_code_url }}',
+                                    '{{ order.siparis_numarasi|escapejs }}',
+                                    '{{ order.siparis_tipi|escapejs }}',
+                                    '{{ order.musteri|escapejs }}',
+                                    '{{ order.urun_kodu|escapejs }}',
+                                    '{{ order.renk|escapejs }}',
+                                    '{{ order.beden|escapejs }}'
+                                )">
+                                🖨️ Yazdır
+                            </button>
+                        {% else %}
+                            <span class="text-muted small fst-italic">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">Görüntüle</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" class="text-center text-muted py-4">
+                        Henüz sipariş bulunmuyor.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 function printLabel(qrUrl, siparisNo, tipi, musteri, urunKodu, renk, beden) {
     const printWindow = window.open('', '_blank', 'width=400,height=250');
@@ -52,9 +267,15 @@ function printLabel(qrUrl, siparisNo, tipi, musteri, urunKodu, renk, beden) {
         </html>
     `);
     printWindow.document.close();
+
     printWindow.onload = function () {
         printWindow.print();
-        printWindow.onafterprint = function () { printWindow.close(); };
+        printWindow.onafterprint = function () {
+            printWindow.close();
+        };
     };
 }
 </script>
+
+</body>
+</html>
