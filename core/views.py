@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Max
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
@@ -78,6 +78,25 @@ def order_list(request):
     paginator = Paginator(qs, 50)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+
+    # 📌 Her sipariş için en son OrderEvent kaydını çek
+    last_events = {
+        e['order']: e for e in (
+            OrderEvent.objects
+            .values('order')
+            .annotate(last_time=Max('timestamp'))
+        )
+    }
+
+    # En son event'in detayını da çek
+    for order in page_obj:
+        latest_event = (
+            OrderEvent.objects
+            .filter(order=order)
+            .order_by('-timestamp')
+            .first()
+        )
+        order.last_event = latest_event  # 👈 Template'te kullanacağız
 
     context = {"orders": page_obj}
     return render(request, "core/order_list.html", context)
@@ -199,10 +218,7 @@ def update_stage(request, pk):
         timestamp=now
     )
 
-    # Veritabanını anında güncelle
     order.refresh_from_db()
-
-    # Paneli tekrar render et (geçmiş dahil)
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
     html = render_to_string("core/_uretim_paneli.html", {"order": order, "events": events})
     return HttpResponse(html)
