@@ -56,11 +56,6 @@ def apply_filters(request, qs):
 # 📋 Sipariş Listeleme
 @login_required
 def order_list(request):
-    # 👇 Patron veya Müdür giriş yaptıysa yönetim paneline yönlendir
-    user_groups = list(request.user.groups.values_list("name", flat=True))
-    if any(role in user_groups for role in ["patron", "mudur"]):
-        return redirect("/management/")
-
     qs = (
         Order.objects.select_related("musteri")
         .only(
@@ -193,6 +188,11 @@ def custom_login(request):
 
             # 🧭 Giriş sonrası yönlendirme:
             user_groups = list(authenticated_user.groups.values_list("name", flat=True))
+            next_url = request.GET.get("next", "/")  # Eğer önceki sayfa varsa oraya git
+
+            if next_url and next_url not in ["/", "/management/"]:
+                return redirect(next_url)
+
             if any(role in user_groups for role in ["patron", "mudur"]):
                 return redirect("/management/")
             else:
