@@ -199,7 +199,6 @@ def custom_login(request):
     return render(request, "registration/custom_login.html")
 
 
-
 # ✍️ Üretim aşamalarını güncelleyen view + geçmiş kaydı
 @login_required
 def update_stage(request, pk):
@@ -312,7 +311,6 @@ def user_management_view(request):
             return redirect("user_management")
 
     return render(request, "user_management.html", {"users": users})
-
 
 
 # 🧭 Yönetim Paneli (Sadece Patron & Müdür)
