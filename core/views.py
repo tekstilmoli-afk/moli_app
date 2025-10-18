@@ -56,6 +56,11 @@ def apply_filters(request, qs):
 # 📋 Sipariş Listeleme
 @login_required
 def order_list(request):
+    # 👇 Patron veya Müdür giriş yaptıysa yönetim paneline yönlendir
+    user_groups = list(request.user.groups.values_list("name", flat=True))
+    if any(role in user_groups for role in ["patron", "mudur"]):
+        return redirect("/management/")
+
     qs = (
         Order.objects.select_related("musteri")
         .only(
