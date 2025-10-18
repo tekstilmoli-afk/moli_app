@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q, Max
+from django.db.models import Q, Max, Count
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
@@ -188,7 +188,7 @@ def custom_login(request):
 
             # 🧭 Giriş sonrası yönlendirme:
             user_groups = list(authenticated_user.groups.values_list("name", flat=True))
-            next_url = request.GET.get("next", "/")  # Eğer önceki sayfa varsa oraya git
+            next_url = request.GET.get("next", "/")
 
             if next_url and next_url not in ["/", "/management/"]:
                 return redirect(next_url)
@@ -325,3 +325,87 @@ def management_panel(request):
     if not any(role in user_groups for role in ["patron", "mudur"]):
         return redirect("order_list")
     return render(request, "management_panel.html")
+
+
+# 📊 GENEL ÜRETİM RAPORU SAYFASI
+@login_required
+def reports_view(request):
+    start_date = request.GET.get("start")
+    end_date = request.GET.get("end")
+
+    orders = Order.objects.all()
+    if start_date and end_date:
+        orders = orders.filter(siparis_tarihi__range=[start_date, end_date])
+
+    total_orders = orders.count()
+    completed_orders = orders.filter(
+        kesim_durum="bitti",
+        dikim_durum="bitti",
+        susleme_durum="bitti",
+        hazir_durum="bitti",
+    ).count()
+    ongoing_orders = total_orders - completed_orders
+
+    # Aşama bazlı dağılım (OrderEvent verilerinden)
+    stage_summary = (
+        OrderEvent.objects
+        .values("stage")
+        .annotate(count=Count("id"))
+        .order_by("stage")
+    )
+
+    context = {
+        "total_orders": total_orders,
+        "completed_orders": completed_orders,
+        "ongoing_orders": ongoing_orders,
+        "stage_summary": stage_summary,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+    return render(request, "reports/reports.html", context)
+
+
+# 👷 PERSONEL ÇALIŞMA RAPORU SAYFASI
+@login_required
+def staff_reports_view(request):
+    start_date = request.GET.get("start")
+    end_date = request.GET.get("end")
+
+    events = OrderEvent.objects.all()
+    if start_date and end_date:
+        events = events.filter(timestamp__range=[start_date, end_date])
+
+    # Personel bazlı özet
+    staff_summary = (
+        events.values("user")
+        .annotate(
+            total_events=Count("id"),
+            last_activity=Max("timestamp"),
+        )
+        .order_by("-total_events")
+    )
+
+    # Aşama bazlı dağılım
+    stage_breakdown = (
+        events.values("user", "stage")
+        .annotate(count=Count("id"))
+        .order_by("user", "stage")
+    )
+
+    # Her kullanıcı için stage verilerini grupla
+    stage_data = {}
+    for s in stage_breakdown:
+        u = s["user"]
+        if u not in stage_data:
+            stage_data[u] = []
+        stage_data[u].append({"stage": s["stage"], "count": s["count"]})
+
+    context = {
+        "staff_summary": staff_summary,
+        "stage_data": stage_data,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+    return render(request, "reports/staff_reports.html", context)

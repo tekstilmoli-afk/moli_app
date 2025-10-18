@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Genel Üretim Raporu</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light p-4">
+<div class="container">
+  <h2 class="mb-4">📊 Genel Üretim Raporu</h2>
+
+  <div class="row mb-3">
+    <div class="col-md-3">
+      <div class="card text-center shadow-sm">
+        <div class="card-body">
+          <h6 class="text-muted">Toplam Sipariş</h6>
+          <h3>{{ total_orders }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center shadow-sm border-success">
+        <div class="card-body">
+          <h6 class="text-muted">Tamamlanan</h6>
+          <h3 class="text-success">{{ completed_orders }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-center shadow-sm border-warning">
+        <div class="card-body">
+          <h6 class="text-muted">Devam Eden</h6>
+          <h3 class="text-warning">{{ ongoing_orders }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h5 class="mt-4">Üretim Aşamalarına Göre Dağılım</h5>
+  <table class="table table-bordered table-sm mt-2 bg-white">
+    <thead class="table-light">
+      <tr>
+        <th>Aşama</th>
+        <th>Toplam İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stage_summary %}
+        <tr>
+          <td>{{ s.stage }}</td>
+          <td>{{ s.count }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="2" class="text-center text-muted">Henüz veri yok</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="mt-4">
+    <a href="/management/" class="btn btn-outline-secondary">← Yönetim Paneline Dön</a>
+  </div>
+</div>
+</body>
+</html>

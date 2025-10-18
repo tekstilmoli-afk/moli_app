@@ -58,7 +58,16 @@
                 <p class="card-text small text-muted">
                     Üretim aşamaları, teslim tarihleri, sipariş yoğunlukları ve performans analizleri.
                 </p>
-                <button class="btn btn-secondary btn-sm w-100" disabled>Yakında</button>
+
+                <!-- 🔽 Alt Rapor Butonları -->
+                <div class="d-grid gap-2 mt-3">
+                    <a href="{% url 'reports' %}" class="btn btn-outline-primary btn-sm w-100">
+                        <i class="fa fa-chart-bar me-1"></i> Genel Üretim Raporu
+                    </a>
+                    <a href="{% url 'staff_reports' %}" class="btn btn-outline-secondary btn-sm w-100">
+                        <i class="fa fa-users me-1"></i> Personel Raporu
+                    </a>
+                </div>
             </div>
         </div>
     </div>

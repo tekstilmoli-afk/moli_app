@@ -32,15 +32,16 @@ urlpatterns = [
     # 👤 Müşteri işlemleri
     path("musteri/new/", views.musteri_create, name="musteri_create"),
 
-    # 🧠 Müşteri arama (Select2 autocomplete için)
-    # path("api/musteri-search/", views.musteri_search, name="musteri_search"),  # 👈 ŞİMDİLİK KAPATILDI
-
     # 🔐 Login / Logout işlemleri
     path("login/", views.custom_login, name="login"),  # ✅ Özel login sayfası
     path("logout/", logout_view, name="logout"),       # ✅ GET logout
 
     # 👥 Kullanıcı Yönetimi
     path("users/", views.user_management_view, name="user_management"),
+
+    # 📊 Raporlama Sayfaları
+    path("reports/", views.reports_view, name="reports"),              # ✅ Genel Üretim Raporu
+    path("staff-reports/", views.staff_reports_view, name="staff_reports"),  # ✅ Personel Raporu
 ]
 
 # 📌 Statik dosyalar (CSS, JS) için ayar
