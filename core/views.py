@@ -88,7 +88,6 @@ def order_list(request):
         )
     }
 
-    # En son event'in detayını da çek
     for order in page_obj:
         latest_event = (
             OrderEvent.objects
@@ -96,7 +95,7 @@ def order_list(request):
             .order_by('-timestamp')
             .first()
         )
-        order.last_event = latest_event  # 👈 Template'te kullanacağız
+        order.last_event = latest_event
 
     context = {"orders": page_obj}
     return render(request, "core/order_list.html", context)
@@ -186,11 +185,19 @@ def custom_login(request):
 
         if authenticated_user:
             login(request, authenticated_user)
-            return redirect("/")
+
+            # 🧭 Giriş sonrası yönlendirme:
+            user_groups = list(authenticated_user.groups.values_list("name", flat=True))
+            if any(role in user_groups for role in ["patron", "mudur"]):
+                return redirect("/management/")
+            else:
+                return redirect("/")
+
         else:
             return render(request, "registration/custom_login.html", {"error": True})
 
     return render(request, "registration/custom_login.html")
+
 
 
 # ✍️ Üretim aşamalarını güncelleyen view + geçmiş kaydı
@@ -203,13 +210,9 @@ def update_stage(request, pk):
     if not stage or not value:
         return HttpResponseForbidden('Eksik veri')
 
-    print("🟡 STAGE DEĞERİ:", stage)
-    print("🟡 VALUE DEĞERİ:", value)
-
     username = request.user.username
     now = timezone.now()
 
-    # Geçmiş kaydı ekle
     OrderEvent.objects.create(
         order=order,
         user=username,
@@ -224,7 +227,7 @@ def update_stage(request, pk):
     return HttpResponse(html)
 
 
-# 🗑️ Sipariş Silme — Sadeleştirilmiş (POST yeterli)
+# 🗑️ Sipariş Silme
 @login_required
 def order_delete(request, pk):
     if not request.user.is_staff:
@@ -234,3 +237,88 @@ def order_delete(request, pk):
         order.delete()
         return HttpResponse(status=204)
     return HttpResponse(status=405)
+
+
+# 👥 Kullanıcı Yönetimi
+from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+
+User = get_user_model()
+
+@login_required
+def user_management_view(request):
+    users = User.objects.all().order_by("username")
+
+    if request.method == "POST":
+        action = request.POST.get("action", "").strip()
+
+        # ➕ Yeni kullanıcı ekleme
+        if action == "create_user":
+            username = request.POST.get("username", "").strip()
+            password = request.POST.get("password", "").strip()
+            role = request.POST.get("role", "").strip()
+
+            if not username or not password or not role:
+                messages.error(request, "Kullanıcı adı, şifre ve rol zorunludur.")
+                return redirect("user_management")
+
+            if User.objects.filter(username=username).exists():
+                messages.warning(request, f"{username} zaten mevcut ⏸️")
+                return redirect("user_management")
+
+            user = User.objects.create_user(username=username, password=password)
+            if role in ["personel", "mudur", "patron"]:
+                try:
+                    group = Group.objects.get(name=role)
+                    user.groups.add(group)
+                except Group.DoesNotExist:
+                    messages.warning(request, f"'{role}' isimli grup bulunamadı.")
+            messages.success(request, f"{username} kullanıcısı ({role}) olarak oluşturuldu ✅")
+            return redirect("user_management")
+
+        # 🔑 Şifre sıfırlama
+        elif action == "reset_password":
+            user_id = request.POST.get("user_id")
+            new_password = request.POST.get("new_password", "").strip()
+            try:
+                u = User.objects.get(pk=user_id)
+                if not new_password:
+                    messages.error(request, "Yeni şifre boş olamaz.")
+                else:
+                    u.set_password(new_password)
+                    u.save()
+                    messages.success(request, f"{u.username} için şifre güncellendi 🔐")
+            except User.DoesNotExist:
+                messages.error(request, "Kullanıcı bulunamadı.")
+            return redirect("user_management")
+
+        # 🗑️ Kullanıcı silme
+        elif action == "delete_user":
+            user_id = request.POST.get("user_id")
+            try:
+                u = User.objects.get(pk=user_id)
+                if u == request.user:
+                    messages.warning(request, "Kendinizi silemezsiniz.")
+                else:
+                    u.delete()
+                    messages.success(request, "Kullanıcı silindi 🗑️")
+            except User.DoesNotExist:
+                messages.error(request, "Silinecek kullanıcı bulunamadı.")
+            return redirect("user_management")
+
+        else:
+            messages.error(request, "Geçersiz işlem.")
+            return redirect("user_management")
+
+    return render(request, "user_management.html", {"users": users})
+
+
+
+# 🧭 Yönetim Paneli (Sadece Patron & Müdür)
+@login_required
+def management_panel(request):
+    user_groups = list(request.user.groups.values_list("name", flat=True))
+    if not any(role in user_groups for role in ["patron", "mudur"]):
+        return redirect("order_list")
+    return render(request, "management_panel.html")

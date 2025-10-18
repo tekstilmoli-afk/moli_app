@@ -18,6 +18,9 @@ urlpatterns = [
     # 🏠 Ana sayfa (Sipariş Listesi)
     path("", views.order_list, name="order_list"),
 
+    # 🧭 Yönetim Paneli (Sadece patron & müdür)
+    path("management/", views.management_panel, name="management_panel"),
+
     # 📝 Sipariş işlemleri
     path("order/new/", views.order_create, name="order_create"),
     path("order/<int:pk>/", views.order_detail, name="order_detail"),
@@ -35,6 +38,9 @@ urlpatterns = [
     # 🔐 Login / Logout işlemleri
     path("login/", views.custom_login, name="login"),  # ✅ Özel login sayfası
     path("logout/", logout_view, name="logout"),       # ✅ GET logout
+
+    # 👥 Kullanıcı Yönetimi
+    path("users/", views.user_management_view, name="user_management"),
 ]
 
 # 📌 Statik dosyalar (CSS, JS) için ayar

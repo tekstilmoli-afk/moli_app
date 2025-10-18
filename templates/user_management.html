@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">👥 Kullanıcı Yönetimi</h2>
+
+    <!-- ✅ Mesajlar -->
+    {% if messages %}
+    <div class="mb-3">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ➕ Yeni Kullanıcı Ekle -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">Yeni Kullanıcı Ekle</div>
+        <div class="card-body">
+            <form method="post" action="{% url 'user_management' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="create_user">
+                <div class="row g-2">
+                    <div class="col-md-3">
+                        <input type="text" name="username" placeholder="Kullanıcı adı" class="form-control" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="password" name="password" placeholder="Şifre" class="form-control" required>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="role" class="form-control" required>
+                            <option value="">Rol Seçin</option>
+                            <option value="personel">Personel</option>
+                            <option value="mudur">Müdür</option>
+                            <option value="patron">Patron</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-success w-100">Ekle</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 📋 Kullanıcı Listesi -->
+    <div class="card">
+        <div class="card-header bg-dark text-white">Kullanıcılar</div>
+        <div class="card-body table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Kullanıcı Adı</th>
+                        <th>Rol</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>
+                            {% with user.groups.first as group %}
+                                {{ group.name|default:"-" }}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <!-- 🔑 Şifre Sıfırlama -->
+                            <form method="post" action="{% url 'user_management' %}" class="d-inline-block me-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="reset_password">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="password" name="new_password" placeholder="Yeni şifre" class="form-control d-inline-block w-auto" required>
+                                <button type="submit" class="btn btn-warning btn-sm">Sıfırla</button>
+                            </form>
+
+                            <!-- 🗑️ Silme -->
+                            <form method="post" action="{% url 'user_management' %}" class="d-inline-block">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_user">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                    onclick="return confirm('{{ user.username }} kullanıcısını silmek istediğinize emin misiniz?')">
+                                    Sil
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">Henüz kullanıcı yok.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
