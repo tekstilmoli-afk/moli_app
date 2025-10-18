@@ -1,53 +1,50 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-  <meta charset="UTF-8">
-  <title>Personel Çalışma Raporu</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="bg-light p-4">
-<div class="container">
-  <h2 class="mb-4">👷 Personel Çalışma Raporu</h2>
+oguzh@oguzhankanyis MINGW64 ~/OneDrive/Masaüstü/moli_app (deploy-v2)
+$ python manage.py runserver
+Watching for file changes with StatReloader
+Performing system checks...
 
-  <table class="table table-bordered table-striped bg-white">
-    <thead class="table-light">
-      <tr>
-        <th>Personel</th>
-        <th>Toplam İşlem</th>
-        <th>Son Aktivite</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in staff_summary %}
-        <tr>
-          <td>{{ s.user }}</td>
-          <td>{{ s.total_events }}</td>
-          <td>{{ s.last_activity|date:"d.m.Y H:i" }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="3" class="text-center text-muted">Henüz kayıt bulunamadı</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <h5 class="mt-4">Detaylı Aşama Dağılımı</h5>
-  {% for user, stages in stage_data.items %}
-    <div class="card mb-3">
-      <div class="card-header bg-secondary text-white">{{ user }}</div>
-      <div class="card-body">
-        <ul class="mb-0">
-          {% for s in stages %}
-            <li>{{ s.stage }} → {{ s.count }}</li>
-          {% endfor %}
-        </ul>
-      </div>
-    </div>
-  {% endfor %}
-
-  <div class="mt-4">
-    <a href="/management/" class="btn btn-outline-secondary">← Yönetim Paneline Dön</a>
-  </div>
-</div>
-</body>
-</html>
+Exception in thread django-main-thread:
+Traceback (most recent call last):
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 1043, in _bootstrap_inner
+    self.run()
+    ~~~~~~~~^^
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\threading.py", line 994, in run
+    self._target(*self._args, **self._kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\autoreload.py", line 64, in wrapper
+    fn(*args, **kwargs)
+    ~~^^^^^^^^^^^^^^^^^
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\management\commands\runserver.py", line 134, in inner_run
+    self.check(**check_kwargs)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\management\base.py", line 492, in check
+    all_issues = checks.run_checks(
+        app_configs=app_configs,
+    ...<2 lines>...
+        databases=databases,
+    )
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\checks\registry.py", line 89, in run_checks
+    new_errors = check(app_configs=app_configs, databases=databases)
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\core\checks\urls.py", line 136, in check_custom_error_handlers
+    handler = resolver.resolve_error_handler(status_code)
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\urls\resolvers.py", line 732, in resolve_error_handler
+    callback = getattr(self.urlconf_module, "handler%s" % view_type, None)
+                       ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\utils\functional.py", line 47, in __get__
+    res = instance.__dict__[self.name] = self.func(instance)
+                                         ~~~~~~~~~^^^^^^^^^^
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\site-packages\django\urls\resolvers.py", line 711, in urlconf_module
+    return import_module(self.urlconf_name)
+  File "C:\Users\oguzh\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 1026, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "C:\Users\oguzh\OneDrive\Masaüstü\moli_app\moli\urls.py", line 22, in <module>
+    path("management/", views.management_panel, name="management_panel"),
+                        ^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: module 'core.views' has no attribute 'management_panel'

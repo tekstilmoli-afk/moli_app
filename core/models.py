@@ -2,6 +2,9 @@ from django.db import models
 from django.utils import timezone
 from django.urls import reverse
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 import qrcode
 from io import BytesIO
 from supabase import create_client, Client
@@ -9,24 +12,51 @@ from supabase import create_client, Client
 # ✅ Supabase client başlat
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
 
+User = get_user_model()
+
+# 👤 Kullanıcı Profili (Görev)
+class UserProfile(models.Model):
+    GOREV_SECENEKLERI = [
+        ("yok", "Yok"),
+        ("kesim", "Kesim"),
+        ("dikim", "Dikim"),
+        ("susleme", "Süsleme"),
+        ("hazir", "Hazır"),
+        ("sevkiyat", "Sevkiyat"),
+        ("nakis", "Nakış"),
+    ]
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
+    gorev = models.CharField(max_length=20, choices=GOREV_SECENEKLERI, default="yok")
+
+    def __str__(self):
+        return f"{self.user.username} ({self.gorev})"
+
+# 🔔 Kullanıcı oluşturulunca profilini aç
+@receiver(post_save, sender=User)
+def create_profile_for_user(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_profile_for_user(sender, instance, **kwargs):
+    # profil yoksa sessizce oluştur
+    UserProfile.objects.get_or_create(user=instance)
+
 
 class Musteri(models.Model):
     ad = models.CharField(max_length=200, db_index=True)
-
     def __str__(self):
         return self.ad
 
 
 class Nakisci(models.Model):
     ad = models.CharField(max_length=100)
-
     def __str__(self):
         return self.ad
 
 
 class Fasoncu(models.Model):
     ad = models.CharField(max_length=100)
-
     def __str__(self):
         return self.ad
 
@@ -158,11 +188,14 @@ class Order(models.Model):
 
 # 📜 ÜRETİM GEÇMİŞİ
 class OrderEvent(models.Model):
+    GOREV_SECENEKLERI = UserProfile.GOREV_SECENEKLERI
+
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="events")
     user = models.CharField(max_length=100)
+    gorev = models.CharField(max_length=20, choices=GOREV_SECENEKLERI, default="yok")
     stage = models.CharField(max_length=50)
     value = models.CharField(max_length=50)
     timestamp = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
-        return f"{self.order} | {self.stage} → {self.value} ({self.user})"
+        return f"{self.order} | {self.stage} → {self.value} ({self.user}, {self.gorev})"

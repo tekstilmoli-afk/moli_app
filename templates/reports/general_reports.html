@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <a href="/management/" class="btn btn-outline-primary btn-sm mb-3">← Yönetim Paneline Dön</a>
+
+    <h2 class="mb-4">📊 Genel Üretim Raporu</h2>
+
+    <!-- 🔍 Filtre Alanı -->
+    <form method="get" class="row g-2 mb-4">
+        <div class="col-md-3">
+            <label class="form-label">Başlangıç Tarihi</label>
+            <input type="date" name="start" value="{{ start_date }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Bitiş Tarihi</label>
+            <input type="date" name="end" value="{{ end_date }}" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Görev Filtresi</label>
+            <select name="gorev" class="form-select">
+                <option value="">Tümü</option>
+                {% for val,label in GOREVLER %}
+                    <option value="{{ val }}" {% if gorev_filter == val %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Filtrele</button>
+        </div>
+    </form>
+
+    <!-- 📦 Üretim Aşama Özeti -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">Üretim Aşamaları Özeti</div>
+        <div class="card-body table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Aşama</th>
+                        <th>Durum</th>
+                        <th>Toplam</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in stage_summary %}
+                        <tr>
+                            <td>{{ row.stage|default:"-" }}</td>
+                            <td>{{ row.value|default:"-" }}</td>
+                            <td><strong>{{ row.count }}</strong></td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="3" class="text-center text-muted">Kayıt bulunamadı.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 👥 Kullanıcı Bazlı Özet -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white">Kullanıcı Aktivite Özeti</div>
+        <div class="card-body table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Kullanıcı</th>
+                        <th>Görev</th>
+                        <th>Toplam İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in user_summary %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ row.user }}</td>
+                            <td>{{ row.gorev|default:"-" }}</td>
+                            <td><strong>{{ row.total }}</strong></td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted">Henüz işlem yapılmamış.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

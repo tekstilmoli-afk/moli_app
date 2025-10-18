@@ -1,15 +1,14 @@
 {% extends "base.html" %}
 {% load static %}
+{% load dict_extras %}
 
 {% block content %}
 <div class="container mt-4">
 
-    <!-- 🔙 Geri Dön Butonu -->
     <a href="/management/" class="btn btn-outline-primary btn-sm mb-3">← Geri Dön</a>
 
     <h2 class="mb-4">👥 Kullanıcı Yönetimi</h2>
 
-    <!-- ✅ Mesajlar -->
     {% if messages %}
     <div class="mb-3">
         {% for message in messages %}
@@ -34,7 +33,7 @@
                     <div class="col-md-3">
                         <input type="password" name="password" placeholder="Şifre" class="form-control" required>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <select name="role" class="form-control" required>
                             <option value="">Rol Seçin</option>
                             <option value="personel">Personel</option>
@@ -42,7 +41,18 @@
                             <option value="patron">Patron</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <select name="gorev" class="form-control">
+                            <option value="yok">Görev: Yok</option>
+                            <option value="kesim">Kesim</option>
+                            <option value="dikim">Dikim</option>
+                            <option value="susleme">Süsleme</option>
+                            <option value="hazir">Hazır</option>
+                            <option value="sevkiyat">Sevkiyat</option>
+                            <option value="nakis">Nakış</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
                         <button type="submit" class="btn btn-success w-100">Ekle</button>
                     </div>
                 </div>
@@ -60,6 +70,7 @@
                         <th>#</th>
                         <th>Kullanıcı Adı</th>
                         <th>Rol</th>
+                        <th>Görev</th>
                         <th>İşlemler</th>
                     </tr>
                 </thead>
@@ -72,6 +83,23 @@
                             {% with user.groups.first as group %}
                                 {{ group.name|default:"-" }}
                             {% endwith %}
+                        </td>
+                        <td>
+                            <form method="post" action="{% url 'user_management' %}" class="d-flex gap-2 align-items-center">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="update_gorev">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <select name="gorev" class="form-select form-select-sm" style="width:auto;">
+                                    {% with profiles|get_item:user.id as prof %}
+                                        {% with prof.gorev as current %}
+                                            {% for val,label in GOREVLER %}
+                                                <option value="{{ val }}" {% if current == val %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        {% endwith %}
+                                    {% endwith %}
+                                </select>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Kaydet</button>
+                            </form>
                         </td>
                         <td>
                             <!-- 🔑 Şifre Sıfırlama -->
@@ -96,11 +124,12 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted">Henüz kullanıcı yok.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted">Henüz kullanıcı yok.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
 {% endblock %}
