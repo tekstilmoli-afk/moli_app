@@ -1,3 +1,38 @@
+{# ==== _uretim_paneli.html — PART 1/3: Styles + History ==== #}
+<style>
+    /* 📜 ÜRETİM GEÇMİŞİ */
+    .gecmis-item { font-size: 14px; }
+    .gecmis-item strong { color: #0d6efd; }
+
+    /* 🎨 Soft UI Buton Tasarımı */
+    .soft-btn {
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 5px;
+    }
+    .soft-btn:active { transform: scale(0.97); }
+
+    .btn-soft-primary { background: #d9e8ff; color: #004085; }
+    .btn-soft-warning { background: #fff3cd; color: #856404; }
+    .btn-soft-success { background: #d4edda; color: #155724; }
+    .btn-soft-info    { background: #d1ecf1; color: #0c5460; }
+    .btn-soft-dark    { background: #ced4da; color: #343a40; }
+    .btn-soft-secondary { background: #e2e3e5; color: #383d41; }
+
+    /* 📦 Aşama blokları */
+    .stage-buttons { display: flex; flex-direction: column; gap: 20px; margin-top: 20px; }
+    .stage-block h6 { margin-bottom: 10px; font-weight: bold; }
+    .stage-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+</style>
+
+<!-- 📜 ÜRETİM GEÇMİŞİ ALANI -->
 <hr>
 <h3>📜 Üretim Geçmişi</h3>
 
@@ -5,9 +40,51 @@
     <ul id="gecmis-listesi" class="list-unstyled">
         {% for e in events %}
             <li class="gecmis-item py-1 border-bottom">
-                <strong>{{ e.stage|title }}</strong> → {{ e.value|title }}
+                <strong>
+                    {% if e.stage == 'dikim_durum' and e.value == 'sıraya_alındı' %}
+                        Dikime Alındı
+                    {% elif e.stage == 'susleme_durum' and e.value == 'sıraya_alındı' %}
+                        Süsleme Sırasına Alındı
+                    {% elif e.stage == 'dikim_durum' and e.value == 'basladi' %}
+                        Dikime Başlandı
+                    {% elif e.stage == 'dikim_durum' and e.value == 'kismi_bitti' %}
+                        Kısmi Dikim Yapıldı
+                    {% elif e.stage == 'dikim_durum' and e.value == 'bitti' %}
+                        Dikim Bitti
+                    {% elif e.stage == 'kesim_durum' and e.value == 'basladi' %}
+                        Kesime Başlandı
+                    {% elif e.stage == 'kesim_durum' and e.value == 'kismi_bitti' %}
+                        Kısmi Kesim Yapıldı
+                    {% elif e.stage == 'kesim_durum' and e.value == 'bitti' %}
+                        Kesim Bitti
+                    {% elif e.stage == 'susleme_durum' and e.value == 'basladi' %}
+                        Süsleme Başladı
+                    {% elif e.stage == 'susleme_durum' and e.value == 'kismi_bitti' %}
+                        Kısmi Süsleme Yapıldı
+                    {% elif e.stage == 'susleme_durum' and e.value == 'bitti' %}
+                        Süsleme Bitti
+                    {% elif e.stage == 'dikim_fason_durumu' and e.value == 'verildi' %}
+                        Dikim İçin Fasona Verildi
+                    {% elif e.stage == 'dikim_fason_durumu' and e.value == 'alindi' %}
+                        Dikim Fasoncusundan Alındı
+                    {% elif e.stage == 'susleme_fason_durumu' and e.value == 'verildi' %}
+                        Süsleme İçin Fasona Verildi
+                    {% elif e.stage == 'susleme_fason_durumu' and e.value == 'alindi' %}
+                        Süsleme Fasoncusundan Alındı
+                    {% elif e.stage == 'sevkiyat_durum' and e.value == 'gonderildi' %}
+                        Sevkiyat Gönderildi
+                    {% else %}
+                        {{ e.stage|title }} → {{ e.value|title }}
+                    {% endif %}
+                </strong>
                 — <em>{{ e.timestamp|date:"d.m.Y H:i" }}</em>
-                — {{ e.user }}
+                — 👤 {{ e.user }}
+                {% if e.parca %} | 🧩 <span class="text-muted">{{ e.parca }}</span>{% endif %}
+                {% if e.adet %} | 🔢 {{ e.adet }} adet{% endif %}
+                {% if e.aciklama %} | 💬 {{ e.aciklama }}{% endif %}
+                {% if e.ortak_calisanlar %} | 👥 {{ e.ortak_calisanlar }}{% endif %}
+                {% if e.fasoncu %} | 🏭 FASONCU: {{ e.fasoncu.ad|upper }}{% endif %}
+                {% if e.nakisci %} | 🪡 NAKIŞÇI: {{ e.nakisci.ad|upper }}{% endif %}
             </li>
         {% endfor %}
     </ul>
@@ -16,104 +93,250 @@
 {% endif %}
 
 <hr>
-<h4>🧱 Aşama Butonları</h4>
+<h4 class="mt-4">🧱 Aşama Butonları</h4>
 
 <div class="stage-buttons">
-    <!-- KESİM -->
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="kesim_durum">
-        <input type="hidden" name="value" value="basladi">
-        <button class="btn btn-sm btn-primary">✂️ Kesim Başladı</button>
-    </form>
+    {# Part 2 burada başlayacak #}
 
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="kesim_durum">
-        <input type="hidden" name="value" value="bitti">
-        <button class="btn btn-sm btn-success">✂️ Kesim Bitti</button>
-    </form>
+{# ==== _uretim_paneli.html — PART 2/3: Kesim + Dikim + Fason Dikim + Nakış ==== #}
 
-    <!-- DİKİM -->
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="dikim_durum">
-        <input type="hidden" name="value" value="basladi">
-        <button class="btn btn-sm btn-primary">🧵 Dikim Başladı</button>
-    </form>
+<!-- ✂️ KESİM BLOKU -->
+<div class="stage-block">
+    <h6 class="text-primary">✂️ Kesim</h6>
+    <div class="stage-actions">
+        <button class="soft-btn btn-soft-primary"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "kesim_durum", "value": "basladi"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Kesim Başladı</button>
 
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="dikim_durum">
-        <input type="hidden" name="value" value="bitti">
-        <button class="btn btn-sm btn-success">🧵 Dikim Bitti</button>
-    </form>
+        <button class="soft-btn btn-soft-warning"
+            onclick="return kismiIslem(this, 'kesim_durum', 'kismi_bitti');">Kısmi Kesim</button>
 
-    <!-- NAKIŞ -->
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="nakis_durumu">
-        <input type="hidden" name="value" value="verildi">
-        <button class="btn btn-sm btn-warning">🪡 Nakış Verildi</button>
-    </form>
-
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="nakis_durumu">
-        <input type="hidden" name="value" value="alindi">
-        <button class="btn btn-sm btn-info">🪡 Nakış Alındı</button>
-    </form>
-
-    <!-- SÜSLEME -->
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="susleme_durum">
-        <input type="hidden" name="value" value="basladi">
-        <button class="btn btn-sm btn-primary">✨ Süsleme Başladı</button>
-    </form>
-
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="susleme_durum">
-        <input type="hidden" name="value" value="bitti">
-        <button class="btn btn-sm btn-success">✨ Süsleme Bitti</button>
-    </form>
-
-    <!-- HAZIR -->
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="hazir_durum">
-        <input type="hidden" name="value" value="bitti">
-        <button class="btn btn-sm btn-success">📦 Hazırlandı</button>
-    </form>
-
-    <!-- SEVKİYAT -->
-    <form hx-get="{% url 'update_stage' order.id %}" 
-          hx-target="#uretim-paneli" 
-          hx-swap="innerHTML transition:true">
-        <input type="hidden" name="stage" value="sevkiyat_durum">
-        <input type="hidden" name="value" value="gonderildi">
-        <button class="btn btn-sm btn-dark">🚚 Gönderildi</button>
-    </form>
+        <button class="soft-btn btn-soft-success"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "kesim_durum", "value": "bitti"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Kesim Bitti</button>
+    </div>
 </div>
 
-<!-- ✨ Yeni geçmiş satırı eklendiğinde aşağı kaydırma efekti -->
+<!-- 🧵 DİKİM BLOKU -->
+<div class="stage-block">
+    <h6 class="text-primary">🧵 Dikim</h6>
+    <div class="stage-actions">
+        <button class="soft-btn btn-soft-secondary"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "dikim_durum", "value": "sıraya_alındı"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Dikim Sırasına Alındı</button>
+
+        <button class="soft-btn btn-soft-primary"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "dikim_durum", "value": "basladi"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Dikim Başladı</button>
+
+        <button class="soft-btn btn-soft-warning"
+            onclick="return kismiIslem(this, 'dikim_durum', 'kismi_bitti');">Kısmi Dikim</button>
+
+        <button class="soft-btn btn-soft-success"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "dikim_durum", "value": "bitti"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Dikim Bitti</button>
+    </div>
+</div>
+
+<!-- 🏭 FASON DİKİM BLOKU -->
+<div class="stage-block">
+    <h6 class="text-primary">🏭 Fason Dikim</h6>
+    <div class="stage-actions">
+
+        <!-- 📤 FASON VERİLDİ -->
+        <div class="dropdown">
+            <button class="soft-btn btn-soft-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                📤 Fason Verildi
+            </button>
+            <ul class="dropdown-menu">
+                {% for f in fasoncular %}
+                <li>
+                    <a class="dropdown-item" href="#"
+                       onclick="return fasonIslem('{{ f.id }}', 'dikim_fason_durumu', 'verildi');">
+                        {{ f.ad }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- 📥 FASON ALINDI -->
+        <div class="dropdown">
+            <button class="soft-btn btn-soft-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                📥 Fason Alındı
+            </button>
+            <ul class="dropdown-menu">
+                {% for f in fasoncular %}
+                <li>
+                    <a class="dropdown-item" href="#"
+                       onclick="return fasonIslem('{{ f.id }}', 'dikim_fason_durumu', 'alindi');">
+                        {{ f.ad }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- 🪡 NAKIŞ BLOKU -->
+<div class="stage-block">
+    <h6 class="text-primary">🪡 Nakış</h6>
+    <div class="stage-actions">
+
+        <!-- 📤 NAKIŞ VERİLDİ -->
+        <div class="dropdown">
+            <button class="soft-btn btn-soft-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                📤 Nakış Verildi
+            </button>
+            <ul class="dropdown-menu">
+                {% for n in nakisciler %}
+                <li>
+                    <a class="dropdown-item" href="#"
+                       onclick="return fasonIslem('{{ n.id }}', 'nakis_durumu', 'verildi');">
+                        {{ n.ad }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- 📥 NAKIŞ ALINDI -->
+        <div class="dropdown">
+            <button class="soft-btn btn-soft-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                📥 Nakış Alındı
+            </button>
+            <ul class="dropdown-menu">
+                {% for n in nakisciler %}
+                <li>
+                    <a class="dropdown-item" href="#"
+                       onclick="return fasonIslem('{{ n.id }}', 'nakis_durumu', 'alindi');">
+                        {{ n.ad }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+{# ==== _uretim_paneli.html — PART 3/3: Süsleme + Fason Süsleme + Hazır/Sevkiyat + Script ==== #}
+
+<!-- ✨ SÜSLEME BLOKU -->
+<div class="stage-block">
+    <h6 class="text-primary">✨ Süsleme</h6>
+    <div class="stage-actions">
+        <button class="soft-btn btn-soft-secondary"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "susleme_durum", "value": "sıraya_alındı"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Süsleme Sırasına Alındı</button>
+
+        <button class="soft-btn btn-soft-primary"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "susleme_durum", "value": "basladi"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Süsleme Başladı</button>
+
+        <button class="soft-btn btn-soft-warning"
+            onclick="return kismiIslem(this, 'susleme_durum', 'kismi_bitti');">Kısmi Süsleme</button>
+
+        <button class="soft-btn btn-soft-success"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "susleme_durum", "value": "bitti"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">Süsleme Bitti</button>
+    </div>
+</div>
+
+<!-- 🏭 FASON SÜSLEME BLOKU -->
+<div class="stage-block">
+    <h6 class="text-primary">🏭 Fason Süsleme</h6>
+    <div class="stage-actions">
+
+        <!-- 📤 FASON VERİLDİ -->
+        <div class="dropdown">
+            <button class="soft-btn btn-soft-warning dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                📤 Fason Verildi
+            </button>
+            <ul class="dropdown-menu">
+                {% for f in fasoncular %}
+                <li>
+                    <a class="dropdown-item" href="#"
+                       onclick="return fasonIslem('{{ f.id }}', 'susleme_fason_durumu', 'verildi');">
+                        {{ f.ad }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- 📥 FASON ALINDI -->
+        <div class="dropdown">
+            <button class="soft-btn btn-soft-info dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                📥 Fason Alındı
+            </button>
+            <ul class="dropdown-menu">
+                {% for f in fasoncular %}
+                <li>
+                    <a class="dropdown-item" href="#"
+                       onclick="return fasonIslem('{{ f.id }}', 'susleme_fason_durumu', 'alindi');">
+                        {{ f.ad }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ✅ HAZIR + SEVKİYAT BLOĞU -->
+<div class="stage-block">
+    <h6 class="text-primary">📦 Hazır & 🚚 Sevkiyat</h6>
+    <div class="stage-actions">
+        <button class="soft-btn btn-soft-success"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "hazir_durum", "value": "bitti"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">📦 Hazırlandı</button>
+
+        <button class="soft-btn btn-soft-dark"
+            hx-get="{% url 'update_stage' order.id %}"
+            hx-vals='{"stage": "sevkiyat_durum", "value": "gonderildi"}'
+            hx-target="#uretim-paneli" hx-swap="innerHTML">🚚 Gönderildi</button>
+    </div>
+</div>
+
+<!-- ✅ JS Fonksiyonları -->
 <script>
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.target.id === 'uretim-paneli') {
-            const list = document.getElementById('gecmis-listesi');
-            if (list) {
-                list.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
+function kismiIslem(button, stage, value) {
+    const text = prompt("Kısmi işlemi belirtiniz (ör: Kol, Etek, Yaka)");
+    if (!text) return false;
+    htmx.ajax('GET', `{% url 'update_stage' order.id %}`, {
+        target: '#uretim-paneli',
+        swap: 'innerHTML',
+        values: { stage: stage, value: value, aciklama: text }
     });
+    return false;
+}
+
+function fasonIslem(fasoncuId, stage, value) {
+    if (!fasoncuId) return false;
+    htmx.ajax('GET', `{% url 'update_stage' order.id %}`, {
+        target: '#uretim-paneli',
+        swap: 'innerHTML',
+        values: { stage: stage, value: value, fasoncu: fasoncuId }
+    });
+    return false;
+}
+
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.target.id === 'uretim-paneli') {
+        const list = document.getElementById('gecmis-listesi');
+        if (list) {
+            list.lastElementChild?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+});
 </script>

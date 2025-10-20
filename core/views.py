@@ -72,16 +72,6 @@ def order_list(request):
             "musteri__ad",
             "qr_code_url",
             "resim",
-            "kesim_yapan",
-            "kesim_tarihi",
-            "dikim_yapan",
-            "dikim_tarihi",
-            "susleme_yapan",
-            "susleme_tarihi",
-            "hazir_yapan",
-            "hazir_tarihi",
-            "sevkiyat_yapan",
-            "sevkiyat_tarihi",
         )
     )
 
@@ -94,14 +84,42 @@ def order_list(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    # ✅ Üretim geçmişi için çeviri sözlüğü
+    STAGE_TRANSLATIONS = {
+        ("dikim_durum", "sıraya_alındı"): "Dikime Alındı",
+        ("susleme_durum", "sıraya_alındı"): "Süsleme Sırasına Alındı",
+        ("dikim_durum", "basladi"): "Dikime Başlandı",
+        ("dikim_durum", "kismi_bitti"): "Kısmi Dikim Yapıldı",
+        ("dikim_durum", "bitti"): "Dikim Bitti",
+        ("kesim_durum", "basladi"): "Kesime Başlandı",
+        ("kesim_durum", "kismi_bitti"): "Kısmi Kesim Yapıldı",
+        ("kesim_durum", "bitti"): "Kesim Bitti",
+        ("susleme_durum", "basladi"): "Süsleme Başladı",
+        ("susleme_durum", "kismi_bitti"): "Kısmi Süsleme Yapıldı",
+        ("susleme_durum", "bitti"): "Süsleme Bitti",
+        ("dikim_fason_durumu", "verildi"): "Dikim İçin Fasona Verildi",
+        ("dikim_fason_durumu", "alindi"): "Dikim Fasoncusundan Alındı",
+        ("susleme_fason_durumu", "verildi"): "Süsleme İçin Fasona Verildi",
+        ("susleme_fason_durumu", "alindi"): "Süsleme Fasoncusundan Alındı",
+        ("sevkiyat_durum", "gonderildi"): "Sevkiyat Gönderildi",
+    }
+
     for order in page_obj:
-        latest_event = (
-            OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
-        )
+        latest_event = OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
         order.last_event = latest_event
+
+        if latest_event:
+            # ✅ Türkçe karşılığı varsa göster, yoksa fallback
+            order.formatted_status = STAGE_TRANSLATIONS.get(
+                (latest_event.stage, latest_event.value),
+                f"{latest_event.stage.replace('_', ' ').title()} → {latest_event.value.title()}"
+            )
+        else:
+            order.formatted_status = "-"
 
     context = {"orders": page_obj}
     return render(request, "core/order_list.html", context)
+
 
 
 # ➕ Yeni Sipariş
@@ -143,38 +161,8 @@ def musteri_search(request):
 def order_detail(request, pk):
     order = get_object_or_404(Order.objects.select_related("musteri"), pk=pk)
     nakisciler = Nakisci.objects.all()
-    fasoncular = Fasoncu.objects.all()
+    fasoncular = Fasoncu.objects.all()  # ✅ BUNU EKLEDİK
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
-
-    if request.user.is_staff:
-        allowed = {
-            "kesim_durum",
-            "dikim_durum",
-            "susleme_durum",
-            "hazir_durum",
-            "sevkiyat_durum",
-            "dikim_fason",
-            "dikim_fasoncu",
-            "dikim_fason_durumu",
-            "susleme_fason",
-            "susleme_fasoncu",
-            "susleme_fason_durumu",
-            "nakis_durumu",
-            "nakisci",
-        }
-    else:
-        allowed = {
-            "dikim_durum",
-            "nakis_durumu",
-            "nakisci",
-            "susleme_durum",
-            "dikim_fason",
-            "dikim_fasoncu",
-            "dikim_fason_durumu",
-            "susleme_fason",
-            "susleme_fasoncu",
-            "susleme_fason_durumu",
-        }
 
     return render(
         request,
@@ -182,9 +170,7 @@ def order_detail(request, pk):
         {
             "order": order,
             "nakisciler": nakisciler,
-            "fasoncular": fasoncular,
-            "allowed": allowed,
-            "is_admin": request.user.is_staff,
+            "fasoncular": fasoncular,  # ✅ BUNU DA EKLEDİK
             "events": events,
         },
     )
@@ -224,32 +210,90 @@ def custom_login(request):
     return render(request, "registration/custom_login.html")
 
 
-# ✍️ Üretim aşamalarını güncelleyen view + geçmiş kaydı
 @login_required
 def update_stage(request, pk):
     order = get_object_or_404(Order, pk=pk)
+
+    # 📌 Stage ve value bilgisi (zorunlu)
     stage = request.GET.get("stage") or request.POST.get("stage")
     value = request.GET.get("value") or request.POST.get("value")
+    is_production_count = request.GET.get("is_production_count") or request.POST.get("is_production_count")
 
     if not stage or not value:
         return HttpResponseForbidden("Eksik veri")
 
-    username = request.user.username
-    now = timezone.now()
-    gorev = "yok"
-    try:
-        gorev = request.user.userprofile.gorev
-    except Exception:
-        pass
+    # 📌 Diğer alanlar (opsiyonel)
+    aciklama = request.GET.get("aciklama") or request.POST.get("aciklama") or ""
+    parca = request.GET.get("parca") or request.POST.get("parca") or ""
+    adet_raw = request.GET.get("adet") or request.POST.get("adet")
+    fasoncu_id = request.GET.get("fasoncu") or request.POST.get("fasoncu")
 
+    # 📌 Adet boşsa 1 kabul edilir
+    try:
+        adet = int(adet_raw) if adet_raw else 1
+    except:
+        adet = 1
+
+    # 📌 Kullanıcı ve görev bilgileri
+    username = request.user.username
+    gorev = getattr(request.user.userprofile, "gorev", "yok")
+    now = timezone.now()
+
+    # 📌 Eğer bu bir ProductionCount isteğiyse, farklı tabloya kaydet
+    if is_production_count == "1":
+        ProductionCount.objects.create(
+            order=order,
+            stage=stage,
+            count=1,
+            user=username,
+            timestamp=now
+        )
+        return HttpResponse("OK")  # Eski panel yenilenmez
+
+    # ✅ Fasoncu veya Nakışçı bilgisi varsa çek
+    fasoncu = None
+    nakisci = None
+    if fasoncu_id:
+        if stage == "nakis_durumu":
+            nakisci = Nakisci.objects.filter(id=fasoncu_id).first()
+        else:
+            fasoncu = Fasoncu.objects.filter(id=fasoncu_id).first()
+
+    # ✅ Normal süreç kaydı (OrderEvent)
     OrderEvent.objects.create(
-        order=order, user=username, gorev=gorev, stage=stage, value=value, timestamp=now
+        order=order,
+        user=username,
+        gorev=gorev,
+        stage=stage,
+        value=value,
+        aciklama=aciklama,
+        parca=parca,
+        adet=adet,
+        fasoncu=fasoncu,
+        nakisci=nakisci,
+        timestamp=now,
     )
 
+    # 📌 Güncellenmiş paneli yeniden yükle
     order.refresh_from_db()
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
     html = render_to_string("core/_uretim_paneli.html", {"order": order, "events": events})
     return HttpResponse(html)
+
+
+
+# ✅ Ürün resmi yüklemek / değiştirmek için fonksiyon
+@login_required
+def order_upload_image(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+
+    if request.method == "POST" and request.FILES.get("resim"):
+        order.resim = request.FILES["resim"]
+        order.save()
+
+    return redirect("order_detail", pk=order.pk)
+
+
 
 
 # 🗑️ Sipariş Silme
@@ -302,7 +346,6 @@ def reports_view(request):
     }
 
     return render(request, "reports/general_reports.html", context)
-
 
 # 👥 Kullanıcı Yönetimi
 @login_required
@@ -418,7 +461,7 @@ def staff_reports_view(request):
 
     stage_data = {}
     for e in events:
-        username = e.user if isinstance(e.user, str) else getattr(e.user, "username", "Bilinmiyor")
+        username = e.user
         stage = e.stage or "-"
         if username not in stage_data:
             stage_data[username] = {}
@@ -442,14 +485,9 @@ def staff_reports_view(request):
     return render(request, "reports/staff_reports.html", context)
 
 
-# 🧭 Yönetim Paneli (Sadece Patron & Müdür)
+# 🧭 Yönetim Paneli
 @login_required
 def management_panel(request):
-    """
-    Yönetim paneli:
-    - Patron ve Müdür rolleri erişebilir.
-    - Diğer kullanıcılar otomatik sipariş listesine yönlendirilir.
-    """
     user_groups = list(request.user.groups.values_list("name", flat=True))
     if not any(role in user_groups for role in ["patron", "mudur"]):
         return redirect("order_list")

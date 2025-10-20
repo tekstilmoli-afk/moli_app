@@ -31,6 +31,7 @@ class UserProfile(models.Model):
     def __str__(self):
         return f"{self.user.username} ({self.gorev})"
 
+
 # 🔔 Kullanıcı oluşturulunca profilini aç
 @receiver(post_save, sender=User)
 def create_profile_for_user(sender, instance, created, **kwargs):
@@ -195,7 +196,39 @@ class OrderEvent(models.Model):
     gorev = models.CharField(max_length=20, choices=GOREV_SECENEKLERI, default="yok")
     stage = models.CharField(max_length=50)
     value = models.CharField(max_length=50)
+
+    # ✅ Yeni üretim detay alanları
+    adet = models.PositiveIntegerField(default=1)  # Kaç adet ürün işlendi
+    parca = models.CharField(max_length=100, blank=True, null=True)  # Hangi parça yapıldı
+    aciklama = models.TextField(blank=True, null=True)  # Ek açıklama
+    ortak_calisanlar = models.CharField(max_length=255, blank=True, null=True)  # Ortak çalışanlar
+
+    # ✅ Fasoncu alanı (daha önce de vardı)
+    fasoncu = models.ForeignKey(
+        Fasoncu,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="event_fasonlari"
+    )
+
+    # ✅ YENİ EKLENEN Nakışçı alanı
+    nakisci = models.ForeignKey(
+        Nakisci,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="event_nakisleri"
+    )
+
     timestamp = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"{self.order} | {self.stage} → {self.value} ({self.user}, {self.gorev})"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["order"]),
+            models.Index(fields=["user"]),
+            models.Index(fields=["stage"]),
+        ]

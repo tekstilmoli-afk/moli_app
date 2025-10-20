@@ -28,6 +28,7 @@ urlpatterns = [
     # 🧱 Üretim aşamalarını güncelleme (butonlar için)
     path("orders/<int:pk>/update/", views.update_stage, name="update_stage"),  # 👈 mevcut
     path("orders/<int:pk>/delete/", views.order_delete, name="order_delete"),  # 🗑️ SİLME URL'İ
+    path("orders/<int:pk>/upload-image/", views.order_upload_image, name="order_upload_image"),
 
     # 👤 Müşteri işlemleri
     path("musteri/new/", views.musteri_create, name="musteri_create"),
