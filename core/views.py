@@ -75,16 +75,32 @@ def order_list(request):
         )
     )
 
-    qs = apply_filters(request, qs)
+    # ✅ Modal üzerinden gelen çoklu filtre parametreleri
+    siparis_nolar = request.GET.getlist("siparis_no")
+    musteriler = request.GET.getlist("musteri")
+    urun_kodlari = request.GET.getlist("urun_kodu")
+    renkler = request.GET.getlist("renk")
+    bedenler = request.GET.getlist("beden")
+    status_filter = request.GET.getlist("status")
 
-    if not qs.query.order_by:
-        qs = qs.order_by("-id")
+    # ✅ Filtreler uygulanıyor (seçilmişse)
+    if siparis_nolar:
+        qs = qs.filter(siparis_numarasi__in=siparis_nolar)
 
-    paginator = Paginator(qs, 50)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    if musteriler:
+        qs = qs.filter(musteri__ad__in=musteriler)
 
-    # ✅ Üretim geçmişi için çeviri sözlüğü
+    if urun_kodlari:
+        qs = qs.filter(urun_kodu__in=urun_kodlari)
+
+    if renkler:
+        qs = qs.filter(renk__in=renkler)
+
+    if bedenler:
+        qs = qs.filter(beden__in=bedenler)
+
+    # ✅ Üretim Durumu Filtresi - OrderEvent üzerinden
+    # ✅ STAGE_TRANSLATIONS sözlüğü burada önceden tanımlı değilse alta taşınacak
     STAGE_TRANSLATIONS = {
         ("dikim_durum", "sıraya_alındı"): "Dikime Alındı",
         ("susleme_durum", "sıraya_alındı"): "Süsleme Sırasına Alındı",
@@ -104,12 +120,60 @@ def order_list(request):
         ("sevkiyat_durum", "gonderildi"): "Sevkiyat Gönderildi",
     }
 
+    if status_filter:
+        stage_value_pairs = [
+            key for key, val in STAGE_TRANSLATIONS.items() if val in status_filter
+    ]
+    
+        # Geçici liste: sadece latest_event'i eşleşen siparişleri topla
+        matching_ids = []
+        for order in qs:
+            latest_event = OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
+            if latest_event and (latest_event.stage, latest_event.value) in stage_value_pairs:
+                matching_ids.append(order.id)
+
+        qs = qs.filter(id__in=matching_ids)
+
+
+        # Çoklu OR için Q nesneleri oluştur
+        query = Q()
+        for stage, value in stage_value_pairs:
+            query |= Q(stage=stage, value=value)
+
+        # Bu event'lere sahip sipariş ID'lerini al
+        matching_order_ids = OrderEvent.objects.filter(query).values_list("order_id", flat=True)
+
+        # Ana queryset'i bu orderlarla kısıtla
+        qs = qs.filter(id__in=matching_order_ids)
+
+    # ✅ Teslim Tarihi Aralığı Filtresi
+    teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
+    teslim_bitis = request.GET.get("teslim_tarihi_bitis")
+
+    if teslim_baslangic and teslim_bitis:
+        qs = qs.filter(teslim_tarihi__range=[teslim_baslangic, teslim_bitis])
+    elif teslim_baslangic:
+        qs = qs.filter(teslim_tarihi__gte=teslim_baslangic)
+    elif teslim_bitis:
+        qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
+
+    # ✅ Ek filtre yapısını çalıştır
+    qs = apply_filters(request, qs)
+
+    # ✅ Eğer sıralama yoksa default ver
+    if not qs.query.order_by:
+        qs = qs.order_by("-id")
+
+    paginator = Paginator(qs, 50)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    # ✅ Üretim geçmişini (formatted_status) oluştur
     for order in page_obj:
         latest_event = OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
         order.last_event = latest_event
 
         if latest_event:
-            # ✅ Türkçe karşılığı varsa göster, yoksa fallback
             order.formatted_status = STAGE_TRANSLATIONS.get(
                 (latest_event.stage, latest_event.value),
                 f"{latest_event.stage.replace('_', ' ').title()} → {latest_event.value.title()}"
@@ -117,8 +181,39 @@ def order_list(request):
         else:
             order.formatted_status = "-"
 
-    context = {"orders": page_obj}
+    # ✅ Modal seçenekleri (distinct verilerle)
+    siparis_options = Order.objects.order_by().values_list("siparis_numarasi", flat=True).distinct()
+    musteri_options = Order.objects.order_by().values_list("musteri__ad", flat=True).distinct()
+    urun_options = Order.objects.order_by().values_list("urun_kodu", flat=True).distinct()
+    renk_options = Order.objects.order_by().values_list("renk", flat=True).distinct()
+    beden_options = Order.objects.order_by().values_list("beden", flat=True).distinct()
+    status_options = list(set(STAGE_TRANSLATIONS.values()))
+
+    context = {
+        "orders": page_obj,
+        "siparis_options": siparis_options,
+        "musteri_options": musteri_options,
+        "urun_options": urun_options,
+        "renk_options": renk_options,
+        "beden_options": beden_options,
+        "siparis_no_selected": siparis_nolar,
+        "musteri_selected": musteriler,
+        "urun_kodu_selected": urun_kodlari,
+        "renk_selected": renkler,
+        "beden_selected": bedenler,
+        "teslim_baslangic_selected": teslim_baslangic,
+        "teslim_bitis_selected": teslim_bitis,
+        "status_options": status_options,
+        "status_selected": status_filter,
+    }
+
     return render(request, "core/order_list.html", context)
+
+
+
+
+
+
 
 
 
