@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Ürün Maliyet Listesi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light py-5">
+<div class="container">
+    <div class="card shadow p-4">
+        <h3 class="mb-4">💰 Ürün Maliyet Listesi</h3>
+
+        <!-- Yeni ürün ekleme formu -->
+        <form method="POST" class="row g-3 mb-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add">
+            <div class="col-md-4">
+                <input name="urun_kodu" class="form-control" placeholder="Ürün Kodu" required>
+            </div>
+            <div class="col-md-3">
+                <input name="maliyet" type="number" step="0.01" class="form-control" placeholder="Maliyet" required>
+            </div>
+            <div class="col-md-2">
+                <select name="para_birimi" class="form-select">
+                    <option value="TRY">TRY</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100">➕ Ekle / Güncelle</button>
+            </div>
+        </form>
+
+        <!-- Liste -->
+        <table class="table table-striped table-bordered">
+            <thead class="table-secondary">
+                <tr>
+                    <th>Ürün Kodu</th>
+                    <th>Maliyet</th>
+                    <th>Para Birimi</th>
+                    <th>Sil</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cost in costs %}
+                    <tr>
+                        <td>{{ cost.urun_kodu }}</td>
+                        <td>{{ cost.maliyet }}</td>
+                        <td>{{ cost.para_birimi }}</td>
+                        <td>
+                            <form method="POST" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="id" value="{{ cost.id }}">
+                                <button class="btn btn-danger btn-sm">🗑️ Sil</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">Henüz veri yok.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Sayfalama -->
+        <nav aria-label="Sayfalama">
+            <ul class="pagination justify-content-center">
+                {% if costs.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ costs.previous_page_number }}">Önceki</a></li>
+                {% endif %}
+                <li class="page-item active"><a class="page-link">{{ costs.number }}</a></li>
+                {% if costs.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ costs.next_page_number }}">Sonraki</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+
+        <a href="{% url 'management_panel' %}" class="btn btn-secondary mt-3">⬅ Yönetim Paneline Dön</a>
+    </div>
+</div>
+</body>
+</html>

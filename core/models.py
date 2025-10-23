@@ -43,6 +43,22 @@ def save_profile_for_user(sender, instance, **kwargs):
     # profil yoksa sessizce oluştur
     UserProfile.objects.get_or_create(user=instance)
 
+# 💰 Para birimi seçenekleri
+CURRENCY_CHOICES = (
+    ("TRY", "TRY"),
+    ("USD", "USD"),
+    ("EUR", "EUR"),
+)
+
+# 💵 Ürün Maliyeti Modeli
+class ProductCost(models.Model):
+    urun_kodu = models.CharField(max_length=100, unique=True)
+    maliyet = models.DecimalField(max_digits=12, decimal_places=2)
+    para_birimi = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="TRY")
+
+    def __str__(self):
+        return f"{self.urun_kodu} - {self.maliyet} {self.para_birimi}"
+
 
 class Musteri(models.Model):
     ad = models.CharField(max_length=200, db_index=True)
@@ -139,6 +155,32 @@ class Order(models.Model):
         choices=[('yok', 'Yok'), ('verildi', 'Nakışa Verildi'), ('alindi', 'Nakıştan Alındı')],
         default='yok'
     )
+
+    # 💰 Satış – Maliyet Bilgileri
+    satis_fiyati = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    para_birimi = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="TRY")
+
+    maliyet_uygulanan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    maliyet_para_birimi = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="TRY")
+    maliyet_override = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    ekstra_maliyet = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+
+    @property
+    def efektif_maliyet(self):
+        """Maliyet override varsa onu döndürür, yoksa uygulananı."""
+        return self.maliyet_override if self.maliyet_override is not None else self.maliyet_uygulanan
+
+    @property
+    def kar(self):
+        """Satış - maliyet - ekstra maliyet (aynı para birimi kontrolüyle)."""
+        if self.satis_fiyati is None or self.efektif_maliyet is None:
+            return None
+        if self.para_birimi != self.maliyet_para_birimi:
+            return None
+        return self.satis_fiyati - (self.efektif_maliyet or 0) - (self.ekstra_maliyet or 0)
+
 
     def save(self, *args, **kwargs):
         if not self.siparis_numarasi and self.siparis_tipi:

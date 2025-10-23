@@ -8,8 +8,13 @@ from django.contrib.auth import authenticate, login, get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from openpyxl import Workbook
+from django.db.models import Sum, F, ExpressionWrapper, FloatField
+from django.db.models import Subquery, OuterRef
+from django.db.models.functions import Coalesce
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 
-from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile
+
+from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost
 from .forms import OrderForm, MusteriForm
 
 
@@ -221,13 +226,35 @@ def order_list(request):
 @login_required
 def order_create(request):
     if request.method == "POST":
-        form = OrderForm(request.POST, request.FILES)
+        form = OrderForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
-            form.save()
+            order = form.save(commit=False)
+
+            # 🧮 Ürün koduna göre otomatik maliyet ata
+            urun_kodu = form.cleaned_data.get("urun_kodu")
+            if urun_kodu:
+                try:
+                    from .models import ProductCost
+                    maliyet_obj = ProductCost.objects.get(urun_kodu=urun_kodu)
+                    order.maliyet_uygulanan = maliyet_obj.maliyet
+                    order.maliyet_para_birimi = maliyet_obj.para_birimi
+                except ProductCost.DoesNotExist:
+                    order.maliyet_uygulanan = None
+
+            order.save()
             return redirect("order_list")
     else:
-        form = OrderForm()
-    return render(request, "core/order_form.html", {"form": form})
+        form = OrderForm(user=request.user)
+
+    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+
+    return render(request, "core/order_form.html", {
+        "form": form,
+        "is_manager": is_manager,
+    })
+
+
+
 
 
 # 👤 Yeni Müşteri
@@ -259,6 +286,8 @@ def order_detail(request, pk):
     fasoncular = Fasoncu.objects.all()  # ✅ BUNU EKLEDİK
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
 
+    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+
     return render(
         request,
         "core/order_detail.html",
@@ -267,6 +296,7 @@ def order_detail(request, pk):
             "nakisciler": nakisciler,
             "fasoncular": fasoncular,  # ✅ BUNU DA EKLEDİK
             "events": events,
+            "is_manager": is_manager,
         },
     )
 
@@ -388,6 +418,35 @@ def order_upload_image(request, pk):
 
     return redirect("order_detail", pk=order.pk)
 
+@login_required
+def order_edit(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+
+    # Yetki kontrolü
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
+
+    if request.method == "POST":
+        form = OrderForm(request.POST, request.FILES, instance=order, user=request.user)
+        if form.is_valid():
+            form.save()
+            return redirect("order_detail", pk=pk)
+    else:
+        form = OrderForm(instance=order, user=request.user)
+
+    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+
+    return render(request, "core/order_form.html", {
+        "form": form,
+        "order": order,
+        "edit_mode": True,
+        "is_manager": is_manager,
+    })
+
+
+
+
+
 
 
 
@@ -441,6 +500,36 @@ def reports_view(request):
     }
 
     return render(request, "reports/general_reports.html", context)
+
+
+# 📦 GİDEN ÜRÜNLER RAPORU (yeni versiyon)
+@login_required
+def giden_urunler_raporu(request):
+    # Sadece patron veya müdür görebilir
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu raporu görme yetkiniz yok.")
+
+    # ✅ Artık gitti_mi yerine sevkiyat_durum kullanıyoruz
+    orders = (
+        Order.objects.filter(sevkiyat_durum="gonderildi")
+        .select_related("musteri")
+        .order_by("-id")
+    )
+
+    # Toplam kar hesaplama
+    toplam_kar = sum([o.kar or 0 for o in orders if o.kar is not None])
+    toplam_satis = sum([o.satis_fiyati or 0 for o in orders if o.satis_fiyati is not None])
+    toplam_maliyet = sum([o.efektif_maliyet or 0 for o in orders if o.efektif_maliyet is not None])
+
+    context = {
+        "orders": orders,
+        "toplam_kar": toplam_kar,
+        "toplam_satis": toplam_satis,
+        "toplam_maliyet": toplam_maliyet,
+    }
+
+    return render(request, "reports/giden_urunler.html", context)
+
 
 # 👥 Kullanıcı Yönetimi
 @login_required
@@ -579,11 +668,132 @@ def staff_reports_view(request):
 
     return render(request, "reports/staff_reports.html", context)
 
+@login_required
+def fast_profit_report(request):
+    from django.db.models import F, Sum, ExpressionWrapper, FloatField, Q
+    from django.db.models.functions import Coalesce
+    from django.db.models import Subquery, OuterRef
+
+    musteri = request.GET.get("musteri")
+    tarih1 = request.GET.get("t1")
+    tarih2 = request.GET.get("t2")
+
+    # Her sipariş için EN SON event (timestamp'e göre) bilgisini çekiyoruz
+    latest_event = OrderEvent.objects.filter(order=OuterRef("pk")).order_by("-timestamp")
+
+    # Sadece EN SON durumu "sevkiyat_durum = gonderildi" olan siparişler
+    orders = (
+        Order.objects.select_related("musteri")
+        .only(
+            "id", "siparis_numarasi", "musteri__ad", "urun_kodu", "adet",
+            "satis_fiyati", "maliyet_uygulanan", "ekstra_maliyet",
+            "maliyet_override", "siparis_tarihi"
+        )
+        .annotate(
+            latest_stage=Subquery(latest_event.values("stage")[:1]),
+            latest_value=Subquery(latest_event.values("value")[:1]),
+        )
+        .filter(latest_stage="sevkiyat_durum", latest_value="gonderildi")
+    )
+
+    # İsteğe bağlı filtreler
+    if musteri:
+        orders = orders.filter(musteri__ad__icontains=musteri)
+    if tarih1 and tarih2:
+        orders = orders.filter(siparis_tarihi__range=[tarih1, tarih2])
+
+    # Etkin maliyet ve kâr (alias çakışmasın diye farklı isimler)
+    eff_cost_expr = (
+        Coalesce(F("maliyet_uygulanan"), 0.0) +
+        Coalesce(F("ekstra_maliyet"), 0.0) +
+        Coalesce(F("maliyet_override"), 0.0)
+    )
+    orders = orders.annotate(
+        eff_cost_sql=ExpressionWrapper(eff_cost_expr, output_field=FloatField()),
+        profit_sql=ExpressionWrapper(F("satis_fiyati") - eff_cost_expr, output_field=FloatField()),
+    )
+
+    # Toplamlar
+    toplamlar = orders.aggregate(
+        toplam_ciro=Sum("satis_fiyati"),
+        toplam_maliyet=Sum("eff_cost_sql"),
+        toplam_kar=Sum("profit_sql"),
+    )
+
+    # Sayfalama (hız için 20 satır)
+    paginator = Paginator(orders.order_by("-id"), 20)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    context = {
+        "page_obj": page_obj,
+        "toplam_ciro": toplamlar["toplam_ciro"] or 0,
+        "toplam_maliyet": toplamlar["toplam_maliyet"] or 0,
+        "toplam_kar": toplamlar["toplam_kar"] or 0,
+        "musteri": musteri or "",
+    }
+    return render(request, "reports/fast_profit_report.html", context)
+
+
+
+
+
+
+
+
+# 🧾 ÜRÜN MALİYET LİSTESİ YÖNETİMİ
+@login_required
+def product_cost_list(request):
+    # Sadece patron veya müdür erişebilir
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu sayfaya erişim yetkiniz yok.")
+
+    # 🧩 Yeni kayıt ekleme veya silme işlemleri
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        # ➕ Yeni kayıt ekle veya güncelle
+        if action == "add":
+            urun_kodu = request.POST.get("urun_kodu", "").strip()
+            maliyet = request.POST.get("maliyet", "").strip()
+            para_birimi = request.POST.get("para_birimi", "TRY")
+
+            if urun_kodu and maliyet:
+                ProductCost.objects.update_or_create(
+                    urun_kodu=urun_kodu,
+                    defaults={"maliyet": maliyet, "para_birimi": para_birimi},
+                )
+
+        # ❌ Silme işlemi
+        elif action == "delete":
+            pk = request.POST.get("id")
+            ProductCost.objects.filter(id=pk).delete()
+
+    # 📋 Listele (sayfalama ile)
+    maliyetler = ProductCost.objects.all().order_by("urun_kodu")
+    paginator = Paginator(maliyetler, 50)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, "costs/product_cost_list.html", {"costs": page_obj})
 
 # 🧭 Yönetim Paneli
 @login_required
 def management_panel(request):
+    # Kullanıcı rolünü kontrol et (sadece patron veya müdür erişebilir)
     user_groups = list(request.user.groups.values_list("name", flat=True))
     if not any(role in user_groups for role in ["patron", "mudur"]):
         return redirect("order_list")
+
+    # Yönetim paneli sayfasını göster
     return render(request, "management_panel.html")
+
+# 📊 RAPORLAR ANA SAYFASI (Raporlara Git →)
+@login_required
+def reports_home(request):
+    # Sadece patron veya müdür görebilsin
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu sayfaya erişim yetkiniz yok.")
+    
+    # reports/reports_home.html şablonunu render et
+    return render(request, "reports/reports_home.html")
+

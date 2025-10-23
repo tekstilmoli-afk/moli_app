@@ -2,73 +2,138 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Yeni Sipariş</title>
+    <title>{% if edit_mode %}Siparişi Düzenle{% else %}Yeni Sipariş{% endif %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light py-5">
 
 <div class="container">
-    <div class="card shadow-lg mx-auto p-4" style="max-width: 600px;">
-        <h2 class="mb-4 text-center">➕ Yeni Sipariş Ekle</h2>
+    <div class="card shadow-lg mx-auto p-4" style="max-width: 700px;">
+        <h2 class="mb-4 text-center">
+            {% if edit_mode %}✏️ Siparişi Düzenle{% else %}➕ Yeni Sipariş Ekle{% endif %}
+        </h2>
 
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
 
-            <div class="mb-3">
-                <label for="id_siparis_tipi" class="form-label">Sipariş Tipi</label>
-                {{ form.siparis_tipi }}
+            <!-- 🧾 TEMEL BİLGİLER -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="id_siparis_tipi" class="form-label">Sipariş Tipi</label>
+                    {{ form.siparis_tipi }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="id_musteri" class="form-label">Müşteri</label>
+                    {{ form.musteri }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="id_siparis_tarihi" class="form-label">Sipariş Tarihi</label>
+                    {{ form.siparis_tarihi }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="id_teslim_tarihi" class="form-label">Teslim Tarihi</label>
+                    {{ form.teslim_tarihi }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="id_urun_kodu" class="form-label">Ürün Kodu</label>
+                    {{ form.urun_kodu }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="id_adet" class="form-label">Adet</label>
+                    {{ form.adet }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="id_renk" class="form-label">Renk</label>
+                    {{ form.renk }}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label for="id_beden" class="form-label">Beden</label>
+                    {{ form.beden }}
+                </div>
+
+                <div class="col-12 mb-3">
+                    <label for="id_aciklama" class="form-label">Açıklama</label>
+                    {{ form.aciklama }}
+                </div>
+
+                <div class="col-12 mb-3">
+                    <label for="id_resim" class="form-label">Resim</label>
+                    {{ form.resim }}
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label for="id_musteri" class="form-label">Müşteri</label>
-                {{ form.musteri }}
-            </div>
+            <!-- 💰 FİYAT & MALİYET ALANLARI (Yalnızca patron / müdür görür) -->
+{% if is_manager %}
+<hr class="mt-4 mb-3">
+<h5 class="text-primary">💰 Fiyat & Maliyet Bilgileri</h5>
 
-            <div class="mb-3">
-                <label for="id_siparis_tarihi" class="form-label">Sipariş Tarihi</label>
-                {{ form.siparis_tarihi }}
-            </div>
+<div class="row g-3">
+    <!-- Satış -->
+    <div class="col-md-4">
+        <label class="form-label fw-semibold">Satış Fiyatı</label>
+        {{ form.satis_fiyati }}
+    </div>
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Para</label>
+        {{ form.para_birimi }}
+    </div>
 
-            <div class="mb-3">
-                <label for="id_urun_kodu" class="form-label">Ürün Kodu</label>
-                {{ form.urun_kodu }}
-            </div>
+    <!-- Maliyet -->
+    <div class="col-md-4">
+        <label class="form-label fw-semibold">Maliyet (Sistemdeki)</label>
+        {{ form.maliyet_uygulanan }}
+    </div>
+    <div class="col-md-2">
+        <label class="form-label fw-semibold">Para</label>
+        {{ form.maliyet_para_birimi }}
+    </div>
 
-            <!-- 🆕 Renk Alanı -->
-            <div class="mb-3">
-                <label for="id_renk" class="form-label">Renk</label>
-                {{ form.renk }}
-            </div>
+    <!-- Manuel Maliyet -->
+    <div class="col-md-4">
+        <label class="form-label fw-semibold">Manuel Maliyet</label>
+        {{ form.maliyet_override }}
+    </div>
 
-            <!-- 🆕 Beden Alanı -->
-            <div class="mb-3">
-                <label for="id_beden" class="form-label">Beden</label>
-                {{ form.beden }}
-            </div>
+    <!-- Ekstra -->
+    <div class="col-md-4">
+        <label class="form-label fw-semibold">Ekstra Maliyet</label>
+        {{ form.ekstra_maliyet }}
+    </div>
 
-            <div class="mb-3">
-                <label for="id_adet" class="form-label">Adet</label>
-                {{ form.adet }}
-            </div>
+    <!-- Gitti Mi -->
+    <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+            {{ form.gitti_mi }}
+            <label class="form-check-label">Ürün Gönderildi</label>
+        </div>
+    </div>
 
-            <div class="mb-3">
-                <label for="id_teslim_tarihi" class="form-label">Teslim Tarihi</label>
-                {{ form.teslim_tarihi }}
-            </div>
+    <!-- Otomatik Kar Alanı (Sadece görsel, hesaplama şimdilik backend’de) -->
+    <div class="col-12">
+        <div class="alert alert-info py-2 mt-2">
+            <strong>💹 Kar Bilgisi:</strong> Bu siparişin karı sistem tarafından otomatik hesaplanacaktır.
+        </div>
+    </div>
+</div>
+{% endif %}
 
-            <div class="mb-3">
-                <label for="id_aciklama" class="form-label">Açıklama</label>
-                {{ form.aciklama }}
-            </div>
 
-            <div class="mb-3">
-                <label for="id_resim" class="form-label">Resim</label>
-                {{ form.resim }}
-            </div>
-
-            <div class="d-flex justify-content-between">
-                <a href="{% url 'order_list' %}" class="btn btn-secondary">⬅ Geri</a>
-                <button type="submit" class="btn btn-primary">💾 Kaydet</button>
+            <!-- 🧭 Butonlar -->
+            <div class="d-flex justify-content-between mt-4">
+                {% if edit_mode %}
+                    <a href="{% url 'order_detail' order.id %}" class="btn btn-secondary">❌ Vazgeç</a>
+                    <button type="submit" class="btn btn-warning">💾 Güncelle</button>
+                {% else %}
+                    <a href="{% url 'order_list' %}" class="btn btn-secondary">⬅ Geri</a>
+                    <button type="submit" class="btn btn-primary">💾 Kaydet</button>
+                {% endif %}
             </div>
         </form>
     </div>

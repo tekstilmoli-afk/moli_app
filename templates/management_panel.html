@@ -53,26 +53,21 @@
     </div>
 
     <!-- 📊 Raporlama -->
-    <div class="col-12 col-md-4">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">📊 Raporlama & İstatistik</h5>
-                <p class="card-text small text-muted">
-                    Üretim aşamaları, teslim tarihleri, sipariş yoğunlukları ve performans analizleri.
-                </p>
-
-                <!-- 🔽 Alt Rapor Butonları -->
-                <div class="d-grid gap-2 mt-3">
-                    <a href="{% url 'reports' %}" class="btn btn-outline-primary btn-sm w-100">
-                        <i class="fa fa-chart-bar me-1"></i> Genel Üretim Raporu
-                    </a>
-                    <a href="{% url 'staff_reports' %}" class="btn btn-outline-secondary btn-sm w-100">
-                        <i class="fa fa-users me-1"></i> Personel Raporu
-                    </a>
-                </div>
-            </div>
+    <!-- 📊 Raporlama -->
+<div class="col-12 col-md-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h5 class="card-title">📊 Raporlama & İstatistik</h5>
+            <p class="card-text small text-muted">
+                Üretim aşamaları, teslim tarihleri, sipariş yoğunlukları ve performans analizleri.
+            </p>
+            <a href="{% url 'reports_home' %}" class="btn btn-outline-primary btn-sm w-100">
+                <i class="fa fa-chart-line me-1"></i> Raporlara Git →
+            </a>
         </div>
     </div>
+</div>
+
 
     <!-- 👥 Kullanıcı Yönetimi -->
     <div class="col-12 col-md-4">
@@ -83,6 +78,21 @@
                     Kullanıcı ekleme, şifre belirleme/değiştirme, yetki atama işlemleri.
                 </p>
                 <a href="/users/" class="btn btn-success btn-sm w-100">Panele Git →</a>
+            </div>
+        </div>
+    </div>
+
+        <!-- 💰 Ürün Maliyetleri -->
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">💰 Ürün Maliyetleri</h5>
+                <p class="card-text small text-muted">
+                    Ürün bazında maliyetleri görüntüleyin, ekleyin veya güncelleyin.
+                </p>
+                <a href="{% url 'product_cost_list' %}" class="btn btn-warning btn-sm w-100">
+                    <i class="fa fa-coins me-1"></i> Maliyet Listesine Git →
+                </a>
             </div>
         </div>
     </div>

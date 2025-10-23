@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Giden Ürünler Raporu</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light py-4">
+
+<div class="container">
+    <h2 class="text-center mb-4">📦 Giden Ürünler Raporu</h2>
+
+    <div class="card shadow p-3 mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Toplam Özet</h5>
+            <p class="mb-0">💰 Toplam Satış: <strong>{{ toplam_satis|floatformat:2 }}</strong></p>
+            <p class="mb-0">💸 Toplam Maliyet: <strong>{{ toplam_maliyet|floatformat:2 }}</strong></p>
+            <p class="mb-0">📈 Toplam Kar: <strong class="{% if toplam_kar > 0 %}text-success{% else %}text-danger{% endif %}">
+                {{ toplam_kar|floatformat:2 }}</strong>
+            </p>
+        </div>
+    </div>
+
+    {% if orders %}
+    <table class="table table-striped table-bordered shadow-sm">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Müşteri</th>
+                <th>Ürün Kodu</th>
+                <th>Adet</th>
+                <th>Satış Fiyatı</th>
+                <th>Maliyet</th>
+                <th>Kar</th>
+                <th>Teslim Tarihi</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for o in orders %}
+            <tr>
+                <td>{{ o.id }}</td>
+                <td>{{ o.musteri.ad }}</td>
+                <td>{{ o.urun_kodu }}</td>
+                <td>{{ o.adet }}</td>
+                <td>{{ o.satis_fiyati }} {{ o.para_birimi }}</td>
+                <td>{{ o.efektif_maliyet }} {{ o.maliyet_para_birimi }}</td>
+                <td class="{% if o.kar > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ o.kar|floatformat:2 }}
+                </td>
+                <td>{{ o.teslim_tarihi }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <div class="alert alert-warning text-center">
+            Henüz sevkiyatı tamamlanmış sipariş bulunmuyor.
+        </div>
+    {% endif %}
+
+    <div class="text-center mt-3">
+        <a href="{% url 'reports' %}" class="btn btn-secondary">⬅ Geri Dön</a>
+    </div>
+</div>
+
+</body>
+</html>

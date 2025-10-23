@@ -24,6 +24,7 @@ urlpatterns = [
     # 📝 Sipariş işlemleri
     path("order/new/", views.order_create, name="order_create"),
     path("order/<int:pk>/", views.order_detail, name="order_detail"),
+    path("order/<int:pk>/edit/", views.order_edit, name="order_edit"),  # ✅ DÜZELTİLDİ
 
     # 🧱 Üretim aşamalarını güncelleme (butonlar için)
     path("orders/<int:pk>/update/", views.update_stage, name="update_stage"),  # 👈 mevcut
@@ -41,11 +42,18 @@ urlpatterns = [
     path("users/", views.user_management_view, name="user_management"),
 
     # 📊 Raporlama Sayfaları
-    path("reports/", views.reports_view, name="reports"),              # ✅ Genel Üretim Raporu
+    path("reports/", views.reports_view, name="reports"),                    # ✅ Genel Üretim Raporu
     path("staff-reports/", views.staff_reports_view, name="staff_reports"),  # ✅ Personel Raporu
+    path("reports/fast/", views.fast_profit_report, name="fast_profit_report"),
+    path("reports/giden-urunler/", views.giden_urunler_raporu, name="giden_urunler_raporu"),  # ✅ Giden Ürünler Raporu
+    path("reports/home/", views.reports_home, name="reports_home"),  # ✅ Raporlar Ana Sayfası
+
+
+    # 💰 Ürün Maliyet Yönetimi ✅ doğru yerde
+    path("product-costs/", views.product_cost_list, name="product_cost_list"),
 ]
 
-# 📌 Statik dosyalar (CSS, JS) için ayar
+# 📌 Statik dosyalar (CSS, JS)
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # 📌 Medya dosyaları (QR kodları, yüklenen resimler)

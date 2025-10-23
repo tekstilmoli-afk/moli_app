@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h3>⚡ Hızlı Ciro & Kâr Raporu</h3>
+
+    <!-- 🔍 Filtre -->
+    <form method="get" class="row g-2 mb-3">
+        <div class="col-md-3">
+            <input type="text" name="musteri" class="form-control" placeholder="Müşteri"
+                   value="{{ musteri }}">
+        </div>
+        <div class="col-md-3">
+            <input type="date" name="t1" class="form-control">
+        </div>
+        <div class="col-md-3">
+            <input type="date" name="t2" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Filtrele</button>
+        </div>
+    </form>
+
+    <!-- 💰 Özet -->
+    <div class="alert alert-info mb-3">
+        <strong>Ciro:</strong> {{ toplam_ciro|floatformat:2 }} ₺ |
+        <strong>Maliyet:</strong> {{ toplam_maliyet|floatformat:2 }} ₺ |
+        <strong>Kâr:</strong> <b>{{ toplam_kar|floatformat:2 }}</b> ₺
+    </div>
+
+    <!-- 📋 Liste -->
+    <table class="table table-striped table-sm bg-white border">
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Müşteri</th>
+                <th>Ürün</th>
+                <th>Adet</th>
+                <th>Satış</th>
+                <th>Maliyet</th>
+                <th>Kâr</th>
+                <th>Tarih</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for o in page_obj %}
+            <tr>
+                <td>{{ o.siparis_numarasi }}</td>
+                <td>{{ o.musteri }}</td>
+                <td>{{ o.urun_kodu }}</td>
+                <td>{{ o.adet }}</td>
+                <td>{{ o.satis_fiyati|floatformat:2 }}</td>
+                <td>{{ o.efektif_maliyet|floatformat:2 }}</td>
+                <td>{{ o.kar|floatformat:2 }}</td>
+                <td>{{ o.siparis_tarihi|date:"d.m.Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center text-muted">Kayıt bulunamadı</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 📄 Sayfalama -->
+    <div class="d-flex justify-content-between">
+        <small>Toplam {{ page_obj.paginator.count }} kayıt</small>
+        <div>
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline-secondary btn-sm">Önceki</a>
+            {% endif %}
+            <span>Sayfa {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary btn-sm">Sonraki</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
