@@ -45,7 +45,10 @@
                 <a href="{% url 'order_edit' order.id %}" class="btn btn-warning btn-sm">✏️ Düzenle</a>
             {% endif %}
 
-            <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
+            {% if is_manager %}
+    <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
+{% endif %}
+
         </div>
 
         <hr>
@@ -92,11 +95,15 @@
                 {% if order.qr_code_url %}
                     <img src="{{ order.qr_code_url }}" alt="QR Kod" class="img-fluid rounded shadow-sm mb-2" style="max-height: 200px;">
                 {% endif %}
-                <form action="{% url 'order_upload_image' order.id %}" method="POST" enctype="multipart/form-data" class="no-print mt-2">
-                    {% csrf_token %}
-                    <input type="file" name="resim" accept="image/*" onchange="this.form.submit()" style="display:none" id="imageInput">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('imageInput').click()">📤 Resim Ekle / Değiştir</button>
-                </form>
+                {% if is_manager|default_if_none:False %}
+<form action="{% url 'order_upload_image' order.id %}" method="POST" enctype="multipart/form-data" class="no-print mt-2">
+
+    {% csrf_token %}
+    <input type="file" name="resim" accept="image/*" onchange="this.form.submit()" style="display:none" id="imageInput">
+    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('imageInput').click()">📤 Resim Ekle / Değiştir</button>
+</form>
+{% endif %}
+
             </div>
         </div>
         {% endif %}
@@ -107,41 +114,56 @@
 <hr>
 <h5 class="mt-4">💰 Maliyet & Kâr Bilgileri</h5>
 <table class="table table-sm table-bordered bg-white">
-    <tr>
-        <th>Uygulanan Maliyet</th>
-        <td>
-            {% if order.maliyet_uygulanan %}
-                {{ order.maliyet_uygulanan }} {{ order.maliyet_para_birimi|default:"₺" }}
-            {% else %}
-                <span class="text-muted">—</span>
-            {% endif %}
-        </td>
-    </tr>
+    <!-- Satış Fiyatı -->
     <tr>
         <th>Satış Fiyatı</th>
         <td>
             {% if order.satis_fiyati %}
-                {{ order.satis_fiyati }} {{ order.satis_para_birimi|default:"₺" }}
+                {{ order.satis_fiyati|floatformat:2 }} {{ order.para_birimi|default:"₺" }}
             {% else %}
                 <span class="text-muted">—</span>
             {% endif %}
         </td>
     </tr>
+
+    <!-- Etkin (Efektif) Maliyet -->
     <tr>
-        <th>Efektif Maliyet</th>
+        <th>Etkin Maliyet</th>
         <td>
             {% if order.efektif_maliyet %}
-                {{ order.efektif_maliyet }} {{ order.maliyet_para_birimi|default:"₺" }}
+                {{ order.efektif_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
             {% else %}
                 <span class="text-muted">—</span>
             {% endif %}
         </td>
     </tr>
+
+    <!-- Ekstra Maliyet -->
     <tr>
-        <th>Kâr</th>
+        <th>Ekstra Maliyet</th>
         <td>
-            {% if order.kar %}
-                <b>{{ order.kar }} {{ order.maliyet_para_birimi|default:"₺" }}</b>
+            {% if order.ekstra_maliyet %}
+                {{ order.ekstra_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
+            {% else %}
+                0,00 {{ order.maliyet_para_birimi|default:"₺" }}
+            {% endif %}
+        </td>
+    </tr>
+
+    <!-- Toplam Maliyet -->
+    <tr>
+        <th>Toplam Maliyet</th>
+        <td>
+            {{ order.toplam_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
+        </td>
+    </tr>
+
+    <!-- Kâr -->
+    <tr>
+        <th><b>Kâr</b></th>
+        <td>
+            {% if order.kar_backend %}
+                <b>{{ order.kar_backend|floatformat:2 }} {{ order.para_birimi|default:"₺" }}</b>
             {% else %}
                 <span class="text-muted">—</span>
             {% endif %}
@@ -149,6 +171,8 @@
     </tr>
 </table>
 {% endif %}
+
+
 
 
         <div class="mt-4 no-print" id="uretim-paneli">

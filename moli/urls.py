@@ -15,6 +15,9 @@ urlpatterns = [
     # 🧭 Admin paneli
     path("admin/", admin.site.urls),
 
+    # 🔐 Özel giriş ekranı
+    path("custom-login/", views.custom_login, name="custom_login"),
+
     # 🏠 Ana sayfa (Sipariş Listesi)
     path("", views.order_list, name="order_list"),
 

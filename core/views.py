@@ -534,6 +534,10 @@ def giden_urunler_raporu(request):
 # 👥 Kullanıcı Yönetimi
 @login_required
 def user_management_view(request):
+    # 🛡️ Sadece patron ve müdür erişebilsin
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu sayfaya erişim yetkiniz yok.")
+        
     from django.contrib import messages
     from django.contrib.auth.models import Group, User
 
@@ -670,6 +674,10 @@ def staff_reports_view(request):
 
 @login_required
 def fast_profit_report(request):
+    # 🛡️ Sadece patron ve müdür erişebilsin
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu sayfaya erişim yetkiniz yok.")
+
     from django.db.models import F, Sum, ExpressionWrapper, FloatField, Q
     from django.db.models.functions import Coalesce
     from django.db.models import Subquery, OuterRef

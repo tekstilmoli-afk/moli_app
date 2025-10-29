@@ -181,6 +181,34 @@ class Order(models.Model):
             return None
         return self.satis_fiyati - (self.efektif_maliyet or 0) - (self.ekstra_maliyet or 0)
 
+    @property
+    def toplam_maliyet(self):
+        """
+        Gerçek toplam (efektif) maliyet:
+        - Öncelik sırası:
+          1. maliyet_override
+          2. maliyet_uygulanan
+          3. yoksa 0
+        - ekstra_maliyet dahil edilir.
+        """
+        uygulanan = (
+            self.maliyet_override
+            if self.maliyet_override is not None
+            else self.maliyet_uygulanan or 0
+        )
+        ekstra = self.ekstra_maliyet or 0
+        return uygulanan + ekstra
+
+    @property
+    def kar_backend(self):
+        """
+        Backend tarafında hesaplanan kâr (genişletilmiş versiyon):
+        satış_fiyati - toplam_maliyet
+        """
+        if self.satis_fiyati is None:
+            return None
+        return (self.satis_fiyati or 0) - self.toplam_maliyet
+
 
     def save(self, *args, **kwargs):
         if not self.siparis_numarasi and self.siparis_tipi:
