@@ -1,3 +1,5 @@
+import time
+from django.urls import reverse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q, Max, Count
 from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
@@ -11,11 +13,10 @@ from openpyxl import Workbook
 from django.db.models import Sum, F, ExpressionWrapper, FloatField
 from django.db.models import Subquery, OuterRef
 from django.db.models.functions import Coalesce
-from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
-
 
 from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost
 from .forms import OrderForm, MusteriForm
+
 
 
 # 🧠 Ortak filtreleme fonksiyonu
@@ -422,15 +423,20 @@ def order_upload_image(request, pk):
 def order_edit(request, pk):
     order = get_object_or_404(Order, pk=pk)
 
-    # Yetki kontrolü
+    # 🛡️ Yetki kontrolü
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
 
     if request.method == "POST":
         form = OrderForm(request.POST, request.FILES, instance=order, user=request.user)
         if form.is_valid():
-            form.save()
-            return redirect("order_detail", pk=pk)
+            order = form.save()
+            order.refresh_from_db()  # 🌀 Değişiklikleri anında yansıt
+            print(f"✅ [DEBUG] Güncellendi: {order.id} - {order.siparis_numarasi}")
+
+            # 🚀 Tarayıcı önbelleğini tamamen atlatmak için timestamp parametresi ekliyoruz
+            return redirect(f"{reverse('order_detail', args=[pk])}?t={int(time.time())}")
+
     else:
         form = OrderForm(instance=order, user=request.user)
 
@@ -442,6 +448,7 @@ def order_edit(request, pk):
         "edit_mode": True,
         "is_manager": is_manager,
     })
+
 
 
 

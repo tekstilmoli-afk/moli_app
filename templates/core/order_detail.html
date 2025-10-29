@@ -13,15 +13,27 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
     <style>
-        .label { font-weight: 600; }
-        .print-btn { float: right; }
-        @media print { .no-print { display: none !important; } }
-        .stage-buttons form {
-            display: inline-block;
-            margin-right: 5px;
-            margin-bottom: 5px;
-        }
-    </style>
+.label { font-weight: 600; }
+.print-btn { float: right; }
+
+.stage-buttons form {
+    display: inline-block;
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+/* ✅ Yazdırırken görünmesini istemediklerimiz */
+@media print {
+    .no-print, .cost-section {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+    }
+}
+</style>
+
+
 </head>
 <body class="bg-light py-5">
 
@@ -63,6 +75,14 @@
             <div class="col-md-6"><span class="label">Müşteri:</span> {{ order.musteri }}</div>
             <div class="col-md-6"><span class="label">Ürün Kodu:</span> {{ order.urun_kodu }}</div>
         </div>
+
+        <div class="row mb-3">
+    <div class="col-md-12">
+        <span class="label">Müşteri Sipariş Referansı:</span>
+        {{ order.musteri_referans|default:"—" }}
+    </div>
+</div>
+
 
         <div class="row mb-3">
             <div class="col-md-6"><span class="label">Renk:</span> {{ order.renk }}</div>
@@ -111,9 +131,10 @@
         <hr>
 
         {% if is_manager %}
-<hr>
-<h5 class="mt-4">💰 Maliyet & Kâr Bilgileri</h5>
-<table class="table table-sm table-bordered bg-white">
+<div class="cost-section no-print">
+    <hr>
+    <h5 class="mt-4">💰 Maliyet & Kâr Bilgileri</h5>
+    <table class="table table-sm table-bordered bg-white">
     <!-- Satış Fiyatı -->
     <tr>
         <th>Satış Fiyatı</th>

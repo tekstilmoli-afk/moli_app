@@ -29,6 +29,12 @@
                 </div>
 
                 <div class="col-md-6 mb-3">
+    <label for="id_musteri_referans" class="form-label">Müşteri Sipariş Referansı</label>
+    {{ form.musteri_referans }}
+</div>
+
+
+                <div class="col-md-6 mb-3">
                     <label for="id_siparis_tarihi" class="form-label">Sipariş Tarihi</label>
                     {{ form.siparis_tarihi }}
                 </div>
@@ -107,13 +113,7 @@
         {{ form.ekstra_maliyet }}
     </div>
 
-    <!-- Gitti Mi -->
-    <div class="col-md-4 d-flex align-items-end">
-        <div class="form-check">
-            {{ form.gitti_mi }}
-            <label class="form-check-label">Ürün Gönderildi</label>
-        </div>
-    </div>
+    
 
     <!-- Otomatik Kar Alanı (Sadece görsel, hesaplama şimdilik backend’de) -->
     <div class="col-12">
