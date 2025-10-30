@@ -62,10 +62,8 @@
 }
 
 /* Güvenli tıklanabilirlik */
-.extra-images-section *,
-.card, .container, .row, .col-md-6, .d-flex {
+.extra-images-section * {
     pointer-events: auto !important;
-    z-index: auto !important;
 }
     </style>
 </head>
@@ -141,11 +139,25 @@
 
         <div class="d-flex flex-wrap justify-content-center mb-3 extra-images-section">
             {% for img in order.extra_images.all %}
-                <a href="{{ img.image_url }}" target="_blank" rel="noopener noreferrer" class="m-2 d-inline-block">
+            <div class="position-relative d-inline-block m-2">
+                <a href="{{ img.image_url }}" target="_blank" rel="noopener noreferrer">
                     <img src="{{ img.image_url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
                 </a>
+
+                {% if is_manager %}
+                <form action="{% url 'delete_order_image' img.id %}" method="POST"
+                      class="position-absolute top-0 end-0 m-1 no-print"
+                      onsubmit="return confirm('Bu görseli silmek istediğine emin misin?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger py-0 px-1"
+                            style="font-size: 0.7rem; line-height: 1; opacity: 0.8;">
+                        ✕
+                    </button>
+                </form>
+                {% endif %}
+            </div>
             {% empty %}
-                <p class="text-muted">Henüz ek görsel yok.</p>
+            <p class="text-muted">Henüz ek görsel yok.</p>
             {% endfor %}
         </div>
 
@@ -158,58 +170,58 @@
         {% endif %}
 
         <!-- 💰 Maliyet & Kâr Bilgileri -->
-{% if is_manager %}
-<div class="cost-section no-print">
-    <hr>
-    <h5 class="mt-4">💰 Maliyet & Kâr Bilgileri</h5>
-    <table class="table table-sm table-bordered bg-white">
-        <tr>
-            <th>Satış Fiyatı</th>
-            <td>
-                {% if order.satis_fiyati %}
-                    {{ order.satis_fiyati|floatformat:2 }} {{ order.para_birimi|default:"₺" }}
-                {% else %}
-                    <span class="text-muted">—</span>
-                {% endif %}
-            </td>
-        </tr>
-        <tr>
-            <th>Etkin Maliyet</th>
-            <td>
-                {% if order.efektif_maliyet %}
-                    {{ order.efektif_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
-                {% else %}
-                    <span class="text-muted">—</span>
-                {% endif %}
-            </td>
-        </tr>
-        <tr>
-            <th>Ekstra Maliyet</th>
-            <td>
-                {% if order.ekstra_maliyet %}
-                    {{ order.ekstra_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
-                {% else %}
-                    0,00 {{ order.maliyet_para_birimi|default:"₺" }}
-                {% endif %}
-            </td>
-        </tr>
-        <tr>
-            <th>Toplam Maliyet</th>
-            <td>{{ order.toplam_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}</td>
-        </tr>
-        <tr>
-            <th><b>Kâr</b></th>
-            <td>
-                {% if order.kar_backend %}
-                    <b>{{ order.kar_backend|floatformat:2 }} {{ order.para_birimi|default:"₺" }}</b>
-                {% else %}
-                    <span class="text-muted">—</span>
-                {% endif %}
-            </td>
-        </tr>
-    </table>
-</div>
-{% endif %}
+        {% if is_manager %}
+        <div class="cost-section no-print">
+            <hr>
+            <h5 class="mt-4">💰 Maliyet & Kâr Bilgileri</h5>
+            <table class="table table-sm table-bordered bg-white">
+                <tr>
+                    <th>Satış Fiyatı</th>
+                    <td>
+                        {% if order.satis_fiyati %}
+                            {{ order.satis_fiyati|floatformat:2 }} {{ order.para_birimi|default:"₺" }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Etkin Maliyet</th>
+                    <td>
+                        {% if order.efektif_maliyet %}
+                            {{ order.efektif_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Ekstra Maliyet</th>
+                    <td>
+                        {% if order.ekstra_maliyet %}
+                            {{ order.ekstra_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
+                        {% else %}
+                            0,00 {{ order.maliyet_para_birimi|default:"₺" }}
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th>Toplam Maliyet</th>
+                    <td>{{ order.toplam_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}</td>
+                </tr>
+                <tr>
+                    <th><b>Kâr</b></th>
+                    <td>
+                        {% if order.kar_backend %}
+                            <b>{{ order.kar_backend|floatformat:2 }} {{ order.para_birimi|default:"₺" }}</b>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+        </div>
+        {% endif %}
 
         <!-- 🧵 Üretim Paneli -->
         <div class="mt-4 no-print" id="uretim-paneli">

@@ -32,12 +32,15 @@ urlpatterns = [
     path("order/<int:pk>/edit/", views.order_edit, name="order_edit"),  # ✅ Düzenleme sayfası
 
     # 🧱 Üretim aşamalarını güncelleme
-    path("orders/<int:pk>/update/", views.update_stage, name="update_stage"),  # 👈 mevcut
-    path("orders/<int:pk>/delete/", views.order_delete, name="order_delete"),  # 🗑️ Silme işlemi
+    path("orders/<int:pk>/update/", views.update_stage, name="update_stage"),
+    path("orders/<int:pk>/delete/", views.order_delete, name="order_delete"),
     path("orders/<int:pk>/upload-image/", views.order_upload_image, name="order_upload_image"),
 
-    # ✅ Çoklu görsel yükleme (hata düzeltilmiş)
+    # ✅ Çoklu görsel yükleme
     path("orders/<int:pk>/add-image/", views.order_add_image, name="order_add_image"),
+
+    # ✅ Görsel silme (YENİ)
+    path("images/<int:image_id>/delete/", views.delete_order_image, name="delete_order_image"),
 
     # ✅ Görseli ayrı sayfada görüntüleme
     path("images/<int:image_id>/", views.view_image, name="view_image"),
@@ -61,6 +64,9 @@ urlpatterns = [
 
     # 💰 Ürün Maliyet Yönetimi
     path("product-costs/", views.product_cost_list, name="product_cost_list"),
+
+    # 🧵 Üretim geçmişi silme (YENİ)
+    path("events/<int:event_id>/delete/", views.delete_order_event, name="delete_order_event"),
 ]
 
 

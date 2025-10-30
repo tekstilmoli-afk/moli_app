@@ -39,58 +39,74 @@
 {% if events %}
     <ul id="gecmis-listesi" class="list-unstyled">
         {% for e in events %}
-            <li class="gecmis-item py-1 border-bottom">
-                <strong>
-                    {% if e.stage == 'dikim_durum' and e.value == 'sıraya_alındı' %}
-                        Dikime Alındı
-                    {% elif e.stage == 'susleme_durum' and e.value == 'sıraya_alındı' %}
-                        Süsleme Sırasına Alındı
-                    {% elif e.stage == 'dikim_durum' and e.value == 'basladi' %}
-                        Dikime Başlandı
-                    {% elif e.stage == 'dikim_durum' and e.value == 'kismi_bitti' %}
-                        Kısmi Dikim Yapıldı
-                    {% elif e.stage == 'dikim_durum' and e.value == 'bitti' %}
-                        Dikim Bitti
-                    {% elif e.stage == 'kesim_durum' and e.value == 'basladi' %}
-                        Kesime Başlandı
-                    {% elif e.stage == 'kesim_durum' and e.value == 'kismi_bitti' %}
-                        Kısmi Kesim Yapıldı
-                    {% elif e.stage == 'kesim_durum' and e.value == 'bitti' %}
-                        Kesim Bitti
-                    {% elif e.stage == 'susleme_durum' and e.value == 'basladi' %}
-                        Süsleme Başladı
-                    {% elif e.stage == 'susleme_durum' and e.value == 'kismi_bitti' %}
-                        Kısmi Süsleme Yapıldı
-                    {% elif e.stage == 'susleme_durum' and e.value == 'bitti' %}
-                        Süsleme Bitti
-                    {% elif e.stage == 'dikim_fason_durumu' and e.value == 'verildi' %}
-                        Dikim İçin Fasona Verildi
-                    {% elif e.stage == 'dikim_fason_durumu' and e.value == 'alindi' %}
-                        Dikim Fasoncusundan Alındı
-                    {% elif e.stage == 'susleme_fason_durumu' and e.value == 'verildi' %}
-                        Süsleme İçin Fasona Verildi
-                    {% elif e.stage == 'susleme_fason_durumu' and e.value == 'alindi' %}
-                        Süsleme Fasoncusundan Alındı
-                    {% elif e.stage == 'sevkiyat_durum' and e.value == 'gonderildi' %}
-                        Sevkiyat Gönderildi
-                    {% else %}
-                        {{ e.stage|title }} → {{ e.value|title }}
-                    {% endif %}
-                </strong>
-                — <em>{{ e.timestamp|date:"d.m.Y H:i" }}</em>
-                — 👤 {{ e.user }}
-                {% if e.parca %} | 🧩 <span class="text-muted">{{ e.parca }}</span>{% endif %}
-                {% if e.adet %} | 🔢 {{ e.adet }} adet{% endif %}
-                {% if e.aciklama %} | 💬 {{ e.aciklama }}{% endif %}
-                {% if e.ortak_calisanlar %} | 👥 {{ e.ortak_calisanlar }}{% endif %}
-                {% if e.fasoncu %} | 🏭 FASONCU: {{ e.fasoncu.ad|upper }}{% endif %}
-                {% if e.nakisci %} | 🪡 NAKIŞÇI: {{ e.nakisci.ad|upper }}{% endif %}
+            <li class="gecmis-item py-1 border-bottom d-flex justify-content-between align-items-start">
+                <div>
+                    <strong>
+                        {% if e.stage == 'dikim_durum' and e.value == 'sıraya_alındı' %}
+                            Dikime Alındı
+                        {% elif e.stage == 'susleme_durum' and e.value == 'sıraya_alındı' %}
+                            Süsleme Sırasına Alındı
+                        {% elif e.stage == 'dikim_durum' and e.value == 'basladi' %}
+                            Dikime Başlandı
+                        {% elif e.stage == 'dikim_durum' and e.value == 'kismi_bitti' %}
+                            Kısmi Dikim Yapıldı
+                        {% elif e.stage == 'dikim_durum' and e.value == 'bitti' %}
+                            Dikim Bitti
+                        {% elif e.stage == 'kesim_durum' and e.value == 'basladi' %}
+                            Kesime Başlandı
+                        {% elif e.stage == 'kesim_durum' and e.value == 'kismi_bitti' %}
+                            Kısmi Kesim Yapıldı
+                        {% elif e.stage == 'kesim_durum' and e.value == 'bitti' %}
+                            Kesim Bitti
+                        {% elif e.stage == 'susleme_durum' and e.value == 'basladi' %}
+                            Süsleme Başladı
+                        {% elif e.stage == 'susleme_durum' and e.value == 'kismi_bitti' %}
+                            Kısmi Süsleme Yapıldı
+                        {% elif e.stage == 'susleme_durum' and e.value == 'bitti' %}
+                            Süsleme Bitti
+                        {% elif e.stage == 'dikim_fason_durumu' and e.value == 'verildi' %}
+                            Dikim İçin Fasona Verildi
+                        {% elif e.stage == 'dikim_fason_durumu' and e.value == 'alindi' %}
+                            Dikim Fasoncusundan Alındı
+                        {% elif e.stage == 'susleme_fason_durumu' and e.value == 'verildi' %}
+                            Süsleme İçin Fasona Verildi
+                        {% elif e.stage == 'susleme_fason_durumu' and e.value == 'alindi' %}
+                            Süsleme Fasoncusundan Alındı
+                        {% elif e.stage == 'sevkiyat_durum' and e.value == 'gonderildi' %}
+                            Sevkiyat Gönderildi
+                        {% else %}
+                            {{ e.stage|title }} → {{ e.value|title }}
+                        {% endif %}
+                    </strong>
+                    — <em>{{ e.timestamp|date:"d.m.Y H:i" }}</em>
+                    — 👤 {{ e.user }}
+                    {% if e.parca %} | 🧩 <span class="text-muted">{{ e.parca }}</span>{% endif %}
+                    {% if e.adet %} | 🔢 {{ e.adet }} adet{% endif %}
+                    {% if e.aciklama %} | 💬 {{ e.aciklama }}{% endif %}
+                    {% if e.ortak_calisanlar %} | 👥 {{ e.ortak_calisanlar }}{% endif %}
+                    {% if e.fasoncu %} | 🏭 FASONCU: {{ e.fasoncu.ad|upper }}{% endif %}
+                    {% if e.nakisci %} | 🪡 NAKIŞÇI: {{ e.nakisci.ad|upper }}{% endif %}
+                </div>
+
+                {% if is_manager %}
+                <form action="{% url 'delete_order_event' e.id %}" method="POST"
+                      onsubmit="return confirm('Bu üretim kaydını silmek istediğinize emin misiniz?');"
+                      class="ms-2">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger py-0 px-1"
+                            style="font-size: 0.7rem; line-height: 1; opacity: 0.8; border-radius: 4px;">
+                        ✕
+                    </button>
+                </form>
+                {% endif %}
             </li>
+        {% empty %}
+            <p class="text-muted">Henüz geçmiş kaydı yok.</p>
         {% endfor %}
     </ul>
-{% else %}
-    <p>Henüz geçmiş kaydı yok.</p>
 {% endif %}
+
 
 <hr>
 <h4 class="mt-4">🧱 Aşama Butonları</h4>

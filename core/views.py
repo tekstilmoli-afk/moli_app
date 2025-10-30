@@ -13,10 +13,12 @@ from openpyxl import Workbook
 from django.db.models import Sum, F, ExpressionWrapper, FloatField
 from django.db.models import Subquery, OuterRef
 from django.db.models.functions import Coalesce
+from django.contrib import messages
+from django.shortcuts import redirect, get_object_or_404
 
 from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost, OrderImage
 from .forms import OrderForm, MusteriForm
-
+from .models import OrderImage
 
 
 # 🧠 Ortak filtreleme fonksiyonu
@@ -65,54 +67,11 @@ def view_image(request, image_id):
     return render(request, "core/view_image.html", {"image": image})
 
 
-# 📋 Sipariş Listeleme
+# 📋 Sipariş Listeleme (optimize edilmiş)
 @login_required
 def order_list(request):
-    qs = (
-        Order.objects.select_related("musteri")
-        .only(
-            "id",
-            "siparis_numarasi",
-            "siparis_tipi",
-            "urun_kodu",
-            "renk",
-            "beden",
-            "adet",
-            "siparis_tarihi",
-            "teslim_tarihi",
-            "aciklama",
-            "musteri__ad",
-            "qr_code_url",
-            "resim",
-        )
-    )
+    from django.db.models import OuterRef, Subquery, Q
 
-    # ✅ Modal üzerinden gelen çoklu filtre parametreleri
-    siparis_nolar = request.GET.getlist("siparis_no")
-    musteriler = request.GET.getlist("musteri")
-    urun_kodlari = request.GET.getlist("urun_kodu")
-    renkler = request.GET.getlist("renk")
-    bedenler = request.GET.getlist("beden")
-    status_filter = request.GET.getlist("status")
-
-    # ✅ Filtreler uygulanıyor (seçilmişse)
-    if siparis_nolar:
-        qs = qs.filter(siparis_numarasi__in=siparis_nolar)
-
-    if musteriler:
-        qs = qs.filter(musteri__ad__in=musteriler)
-
-    if urun_kodlari:
-        qs = qs.filter(urun_kodu__in=urun_kodlari)
-
-    if renkler:
-        qs = qs.filter(renk__in=renkler)
-
-    if bedenler:
-        qs = qs.filter(beden__in=bedenler)
-
-    # ✅ Üretim Durumu Filtresi - OrderEvent üzerinden
-    # ✅ STAGE_TRANSLATIONS sözlüğü burada önceden tanımlı değilse alta taşınacak
     STAGE_TRANSLATIONS = {
         ("dikim_durum", "sıraya_alındı"): "Dikime Alındı",
         ("susleme_durum", "sıraya_alındı"): "Süsleme Sırasına Alındı",
@@ -132,33 +91,66 @@ def order_list(request):
         ("sevkiyat_durum", "gonderildi"): "Sevkiyat Gönderildi",
     }
 
+    # ✅ Her siparişin son event’ini tek sorguda alıyoruz
+    latest_event = (
+        OrderEvent.objects.filter(order=OuterRef("pk"))
+        .order_by("-timestamp")
+        .values("stage", "value")[:1]
+    )
+
+    qs = (
+        Order.objects.select_related("musteri")
+        .only(
+            "id",
+            "siparis_numarasi",
+            "siparis_tipi",
+            "urun_kodu",
+            "renk",
+            "beden",
+            "adet",
+            "siparis_tarihi",
+            "teslim_tarihi",
+            "aciklama",
+            "musteri__ad",
+            "qr_code_url",
+            "resim",
+        )
+        .annotate(
+            latest_stage=Subquery(latest_event.values("stage")),
+            latest_value=Subquery(latest_event.values("value")),
+        )
+    )
+
+    # ✅ Filtreler
+    siparis_nolar = request.GET.getlist("siparis_no")
+    musteriler = request.GET.getlist("musteri")
+    urun_kodlari = request.GET.getlist("urun_kodu")
+    renkler = request.GET.getlist("renk")
+    bedenler = request.GET.getlist("beden")
+    status_filter = request.GET.getlist("status")
+
+    if siparis_nolar:
+        qs = qs.filter(siparis_numarasi__in=siparis_nolar)
+    if musteriler:
+        qs = qs.filter(musteri__ad__in=musteriler)
+    if urun_kodlari:
+        qs = qs.filter(urun_kodu__in=urun_kodlari)
+    if renkler:
+        qs = qs.filter(renk__in=renkler)
+    if bedenler:
+        qs = qs.filter(beden__in=bedenler)
+
+    # ✅ Durum filtresi (tek sorguda)
     if status_filter:
         stage_value_pairs = [
             key for key, val in STAGE_TRANSLATIONS.items() if val in status_filter
-    ]
-    
-        # Geçici liste: sadece latest_event'i eşleşen siparişleri topla
-        matching_ids = []
-        for order in qs:
-            latest_event = OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
-            if latest_event and (latest_event.stage, latest_event.value) in stage_value_pairs:
-                matching_ids.append(order.id)
-
-        qs = qs.filter(id__in=matching_ids)
-
-
-        # Çoklu OR için Q nesneleri oluştur
+        ]
         query = Q()
         for stage, value in stage_value_pairs:
-            query |= Q(stage=stage, value=value)
+            query |= Q(latest_stage=stage, latest_value=value)
+        qs = qs.filter(query)
 
-        # Bu event'lere sahip sipariş ID'lerini al
-        matching_order_ids = OrderEvent.objects.filter(query).values_list("order_id", flat=True)
-
-        # Ana queryset'i bu orderlarla kısıtla
-        qs = qs.filter(id__in=matching_order_ids)
-
-    # ✅ Teslim Tarihi Aralığı Filtresi
+    # ✅ Teslim Tarihi Aralığı
     teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
     teslim_bitis = request.GET.get("teslim_tarihi_bitis")
 
@@ -169,10 +161,9 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
-    # ✅ Ek filtre yapısını çalıştır
+    # ✅ Ek filtre
     qs = apply_filters(request, qs)
 
-    # ✅ Eğer sıralama yoksa default ver
     if not qs.query.order_by:
         qs = qs.order_by("-id")
 
@@ -180,20 +171,17 @@ def order_list(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    # ✅ Üretim geçmişini (formatted_status) oluştur
+    # ✅ Artık döngü çok hafif
     for order in page_obj:
-        latest_event = OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
-        order.last_event = latest_event
-
-        if latest_event:
+        if order.latest_stage and order.latest_value:
             order.formatted_status = STAGE_TRANSLATIONS.get(
-                (latest_event.stage, latest_event.value),
-                f"{latest_event.stage.replace('_', ' ').title()} → {latest_event.value.title()}"
+                (order.latest_stage, order.latest_value),
+                f"{order.latest_stage.replace('_', ' ').title()} → {order.latest_value.title()}",
             )
         else:
             order.formatted_status = "-"
 
-    # ✅ Modal seçenekleri (distinct verilerle)
+    # ✅ Modal seçenekleri
     siparis_options = Order.objects.order_by().values_list("siparis_numarasi", flat=True).distinct()
     musteri_options = Order.objects.order_by().values_list("musteri__ad", flat=True).distinct()
     urun_options = Order.objects.order_by().values_list("urun_kodu", flat=True).distinct()
@@ -220,6 +208,7 @@ def order_list(request):
     }
 
     return render(request, "core/order_list.html", context)
+
 
 
 
@@ -308,25 +297,17 @@ def order_detail(request, pk):
     )
 
 
-# 🔐 Özel Login
+# 🔐 Özel Login (hızlı ve güvenli)
 @csrf_exempt
 def custom_login(request):
     if request.method == "POST":
+        username = request.POST.get("username", "").strip()
         password = request.POST.get("password", "").strip()
-        from django.contrib.auth.models import User
 
-        users = User.objects.all()
-        authenticated_user = None
-
-        for u in users:
-            user = authenticate(username=u.username, password=password)
-            if user:
-                authenticated_user = user
-                break
-
-        if authenticated_user:
-            login(request, authenticated_user)
-            user_groups = list(authenticated_user.groups.values_list("name", flat=True))
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            user_groups = list(user.groups.values_list("name", flat=True))
             next_url = request.GET.get("next", "/")
 
             if next_url and next_url not in ["/", "/management/"]:
@@ -336,10 +317,11 @@ def custom_login(request):
                 return redirect("/management/")
             else:
                 return redirect("/")
-
-        return render(request, "registration/custom_login.html", {"error": True})
+        else:
+            return render(request, "registration/custom_login.html", {"error": True})
 
     return render(request, "registration/custom_login.html")
+
 
 
 @login_required
@@ -473,7 +455,30 @@ def order_add_image(request, pk):
     return redirect("order_detail", pk=pk)
 
 
+@login_required
+def delete_order_image(request, image_id):
+    if not request.user.is_staff:
+        return redirect("order_list")
 
+    image = get_object_or_404(OrderImage, id=image_id)
+    order_id = image.order.id
+    image.delete()
+    messages.success(request, "Görsel başarıyla silindi.")
+    return redirect("order_detail", order_id)
+
+@login_required
+def delete_order_event(request, event_id):
+    event = get_object_or_404(OrderEvent, id=event_id)
+
+    # 🛡️ Sadece patron veya müdür silebilir
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
+
+    order_id = event.order.id
+    event.delete()
+
+    messages.success(request, "Üretim geçmişi kaydı silindi.")
+    return redirect("order_detail", pk=order_id)
 
 
 # 🗑️ Sipariş Silme
