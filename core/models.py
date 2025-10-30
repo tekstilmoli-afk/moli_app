@@ -262,14 +262,42 @@ class Order(models.Model):
     def __str__(self):
         return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
 
-# 📷 Siparişe bağlı görseller (çoklu yükleme desteği)
 class OrderImage(models.Model):
     order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='extra_images')
-    image = models.ImageField(upload_to='siparis_ek_gorselleri/')
+    image = models.ImageField(upload_to='temp_uploads/', blank=True, null=True)  # geçici yerel kayıt
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    image_url = models.URLField(blank=True, null=True)  # Supabase linki
+
+    def save(self, *args, **kwargs):
+        # Yeni kayıt oluşturulurken görsel Supabase'e yüklenir
+        super().save(*args, **kwargs)  # önce yerel dosyayı kaydedelim
+
+        if self.image and not self.image_url:
+            from django.conf import settings
+            from supabase import create_client
+            import os
+
+            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            filename = f"extra_{self.pk}_{os.path.basename(self.image.name)}"
+
+            with self.image.open("rb") as file_data:
+                response = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).upload(
+                    path=filename,
+                    file=file_data.read(),
+                    file_options={"content-type": "image/jpeg"},
+                )
+
+            error_attr = getattr(response, "error", None)
+            if error_attr is None:
+                public_url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(filename)
+                self.image_url = public_url
+                super().save(update_fields=["image_url"])
+            else:
+                print("⚠️ Supabase upload error:", error_attr)
 
     def __str__(self):
         return f"Görsel - {self.order.siparis_numarasi or self.order.id}"
+
 
 
 

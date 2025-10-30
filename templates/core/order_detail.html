@@ -139,8 +139,8 @@
             <h6 class="fw-bold">🖼️ Ek Görseller</h6>
             <div class="d-flex flex-wrap gap-3 justify-content-center">
                 {% for img in order.extra_images.all %}
-                    <a href="{{ img.image.url }}" target="_blank" rel="noopener noreferrer" class="m-2 d-inline-block">
-                        <img src="{{ img.image.url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
+                    <a href="{{ img.image_url }}" target="_blank" rel="noopener noreferrer" class="m-2 d-inline-block">
+                        <img src="{{ img.image_url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
                     </a>
                 {% empty %}
                     <p class="text-muted">Henüz ek görsel yok.</p>
@@ -161,9 +161,9 @@
         <h5 class="fw-bold mt-4">📸 Ek Sipariş Görselleri</h5>
 
         <div class="d-flex flex-wrap justify-content-center mb-3 extra-images-section">
-            {% for img in order.images.all %}
-                <a href="{{ img.image.url }}" target="_blank" rel="noopener noreferrer" class="m-2 d-inline-block">
-                    <img src="{{ img.image.url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
+            {% for img in order.extra_images.all %}
+                <a href="{{ img.image_url }}" target="_blank" rel="noopener noreferrer" class="m-2 d-inline-block">
+                    <img src="{{ img.image_url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
                 </a>
             {% empty %}
                 <p class="text-muted">Henüz ek görsel yok.</p>
