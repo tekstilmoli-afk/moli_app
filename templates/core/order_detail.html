@@ -24,17 +24,57 @@
 
 /* ✅ Yazdırırken görünmesini istemediklerimiz */
 @media print {
-    .no-print, .cost-section {
+    .no-print, .cost-section, .extra-images-section {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
         overflow: hidden !important;
     }
+
+    /* 📸 Ek Sipariş Görselleri başlığını da gizle */
+    h5.fw-bold.mt-4 {
+        display: none !important;
+    }
 }
-</style>
 
+/* 🎯 Görsel bölümünü öne al ve tıklanabilir hale getir */
+.extra-images-section {
+    position: relative;
+    z-index: 999 !important;
+}
 
+.extra-images-section a {
+    display: inline-block;
+    position: relative;
+    z-index: 1000 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.extra-images-section img {
+    position: relative;
+    z-index: 1001 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    border-radius: 8px;
+    transition: transform 0.2s ease;
+}
+
+/* 🖱️ Hover efekti */
+.extra-images-section img:hover {
+    transform: scale(1.03);
+    filter: brightness(1.05);
+}
+
+/* Güvenli tıklanabilirlik */
+.extra-images-section *,
+.card, .container, .row, .col-md-6, .d-flex {
+    pointer-events: auto !important;
+    z-index: auto !important;
+}
+    </style>
 </head>
+
 <body class="bg-light py-5">
 
 {% if user.is_authenticated %}
@@ -52,15 +92,10 @@
             <a href="{% url 'order_list' %}" class="btn btn-outline-secondary btn-sm no-print">⬅ Geri</a>
             <h2 class="mb-0">📦 Sipariş Detayı</h2>
 
-            <!-- ✅ Artık context'ten gelen is_manager kullanılıyor -->
             {% if is_manager %}
                 <a href="{% url 'order_edit' order.id %}" class="btn btn-warning btn-sm">✏️ Düzenle</a>
+                <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
             {% endif %}
-
-            {% if is_manager %}
-    <button onclick="window.print()" class="btn btn-outline-primary no-print print-btn">🖨️ Yazdır</button>
-{% endif %}
-
         </div>
 
         <hr>
@@ -77,12 +112,11 @@
         </div>
 
         <div class="row mb-3">
-    <div class="col-md-12">
-        <span class="label">Müşteri Sipariş Referansı:</span>
-        {{ order.musteri_referans|default:"—" }}
-    </div>
-</div>
-
+            <div class="col-md-12">
+                <span class="label">Müşteri Sipariş Referansı:</span>
+                {{ order.musteri_referans|default:"—" }}
+            </div>
+        </div>
 
         <div class="row mb-3">
             <div class="col-md-6"><span class="label">Renk:</span> {{ order.renk }}</div>
@@ -99,108 +133,111 @@
             <div class="col-md-6"><span class="label">Açıklama:</span> {{ order.aciklama }}</div>
         </div>
 
-        {% if order.resim or order.qr_code_url %}
-        <div class="row mb-4 text-center align-items-center">
-            <div class="col-md-6">
-                <h6 class="fw-bold">📷 Ürün Resmi</h6>
-                {% if order.resim %}
-                    <img src="{{ order.resim.url }}" alt="Sipariş Resmi" class="img-fluid rounded shadow-sm" style="max-height: 200px;">
-                {% else %}
-                    <p class="text-muted">Henüz resim eklenmedi.</p>
-                {% endif %}
-            </div>
-
-            <div class="col-md-6">
-                <h6 class="fw-bold">📱 QR Kod</h6>
-                {% if order.qr_code_url %}
-                    <img src="{{ order.qr_code_url }}" alt="QR Kod" class="img-fluid rounded shadow-sm mb-2" style="max-height: 200px;">
-                {% endif %}
-                {% if is_manager|default_if_none:False %}
-<form action="{% url 'order_upload_image' order.id %}" method="POST" enctype="multipart/form-data" class="no-print mt-2">
-
-    {% csrf_token %}
-    <input type="file" name="resim" accept="image/*" onchange="this.form.submit()" style="display:none" id="imageInput">
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('imageInput').click()">📤 Resim Ekle / Değiştir</button>
-</form>
-{% endif %}
-
+        <!-- 🖼️ Ek Görseller -->
+        {% if order.extra_images.all %}
+        <div class="mt-3 extra-images-section">
+            <h6 class="fw-bold">🖼️ Ek Görseller</h6>
+            <div class="d-flex flex-wrap gap-3 justify-content-center">
+                {% for img in order.extra_images.all %}
+                    <a href="{{ img.image.url }}" target="_blank" rel="noopener noreferrer" class="m-2 d-inline-block">
+                        <img src="{{ img.image.url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
+                    </a>
+                {% empty %}
+                    <p class="text-muted">Henüz ek görsel yok.</p>
+                {% endfor %}
             </div>
         </div>
         {% endif %}
 
+        <!-- 📱 QR Kod -->
+        {% if order.qr_code_url %}
+        <div class="text-center mt-3">
+            <h6 class="fw-bold">📱 QR Kod</h6>
+            <img src="{{ order.qr_code_url }}" alt="QR Kod" class="img-fluid rounded shadow-sm mb-2" style="max-height: 90px; width: auto;">
+        </div>
+        {% endif %}
+
         <hr>
+        <h5 class="fw-bold mt-4">📸 Ek Sipariş Görselleri</h5>
+
+        <div class="d-flex flex-wrap justify-content-center mb-3 extra-images-section">
+            {% for img in order.images.all %}
+                <a href="{{ img.image.url }}" target="_blank" rel="noopener noreferrer" class="m-2 d-inline-block">
+                    <img src="{{ img.image.url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
+                </a>
+            {% empty %}
+                <p class="text-muted">Henüz ek görsel yok.</p>
+            {% endfor %}
+        </div>
 
         {% if is_manager %}
+        <form action="{% url 'order_add_image' order.id %}" method="POST" enctype="multipart/form-data" class="no-print mt-3">
+            {% csrf_token %}
+            <input type="file" name="images" accept="image/*" multiple required>
+            <button type="submit" class="btn btn-outline-secondary btn-sm">📤 Çoklu Görsel Yükle</button>
+        </form>
+        {% endif %}
+
+        <!-- 💰 Maliyet & Kâr Bilgileri -->
+{% if is_manager %}
 <div class="cost-section no-print">
     <hr>
     <h5 class="mt-4">💰 Maliyet & Kâr Bilgileri</h5>
     <table class="table table-sm table-bordered bg-white">
-    <!-- Satış Fiyatı -->
-    <tr>
-        <th>Satış Fiyatı</th>
-        <td>
-            {% if order.satis_fiyati %}
-                {{ order.satis_fiyati|floatformat:2 }} {{ order.para_birimi|default:"₺" }}
-            {% else %}
-                <span class="text-muted">—</span>
-            {% endif %}
-        </td>
-    </tr>
-
-    <!-- Etkin (Efektif) Maliyet -->
-    <tr>
-        <th>Etkin Maliyet</th>
-        <td>
-            {% if order.efektif_maliyet %}
-                {{ order.efektif_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
-            {% else %}
-                <span class="text-muted">—</span>
-            {% endif %}
-        </td>
-    </tr>
-
-    <!-- Ekstra Maliyet -->
-    <tr>
-        <th>Ekstra Maliyet</th>
-        <td>
-            {% if order.ekstra_maliyet %}
-                {{ order.ekstra_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
-            {% else %}
-                0,00 {{ order.maliyet_para_birimi|default:"₺" }}
-            {% endif %}
-        </td>
-    </tr>
-
-    <!-- Toplam Maliyet -->
-    <tr>
-        <th>Toplam Maliyet</th>
-        <td>
-            {{ order.toplam_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
-        </td>
-    </tr>
-
-    <!-- Kâr -->
-    <tr>
-        <th><b>Kâr</b></th>
-        <td>
-            {% if order.kar_backend %}
-                <b>{{ order.kar_backend|floatformat:2 }} {{ order.para_birimi|default:"₺" }}</b>
-            {% else %}
-                <span class="text-muted">—</span>
-            {% endif %}
-        </td>
-    </tr>
-</table>
+        <tr>
+            <th>Satış Fiyatı</th>
+            <td>
+                {% if order.satis_fiyati %}
+                    {{ order.satis_fiyati|floatformat:2 }} {{ order.para_birimi|default:"₺" }}
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Etkin Maliyet</th>
+            <td>
+                {% if order.efektif_maliyet %}
+                    {{ order.efektif_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Ekstra Maliyet</th>
+            <td>
+                {% if order.ekstra_maliyet %}
+                    {{ order.ekstra_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}
+                {% else %}
+                    0,00 {{ order.maliyet_para_birimi|default:"₺" }}
+                {% endif %}
+            </td>
+        </tr>
+        <tr>
+            <th>Toplam Maliyet</th>
+            <td>{{ order.toplam_maliyet|floatformat:2 }} {{ order.maliyet_para_birimi|default:"₺" }}</td>
+        </tr>
+        <tr>
+            <th><b>Kâr</b></th>
+            <td>
+                {% if order.kar_backend %}
+                    <b>{{ order.kar_backend|floatformat:2 }} {{ order.para_birimi|default:"₺" }}</b>
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+    </table>
+</div>
 {% endif %}
 
 
-
-
+        <!-- 🧵 Üretim Paneli -->
         <div class="mt-4 no-print" id="uretim-paneli">
             {% include "core/_uretim_paneli.html" with order=order events=events %}
         </div>
 
-        <!-- ✅ ÜRETİM ADET TAKİBİ -->
         <hr class="mt-4">
         <h5 class="mt-3">📊 Üretim Adet Kaydı</h5>
         <div class="d-flex gap-4 align-items-center no-print">
@@ -208,18 +245,15 @@
                 <input type="checkbox" id="adet_kesim" onchange="adetKaydet(this, 'adet_kesim')">
                 <label for="adet_kesim">Kesim Tamamlandı</label>
             </div>
-
             <div>
                 <input type="checkbox" id="adet_dikim" onchange="adetKaydet(this, 'adet_dikim')">
                 <label for="adet_dikim">Dikim Tamamlandı</label>
             </div>
-
             <div>
                 <input type="checkbox" id="adet_susleme" onchange="adetKaydet(this, 'adet_susleme')">
                 <label for="adet_susleme">Süsleme Tamamlandı</label>
             </div>
         </div>
-
     </div>
 </div>
 
