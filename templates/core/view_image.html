@@ -1,0 +1,186 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Görsel Görüntüle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: #000;
+            margin: 0;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        .img-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+            transition: transform 0.2s ease;
+            cursor: grab;
+        }
+
+        /* 🔙 Geri butonu */
+        .back-btn {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 999;
+        }
+
+        /* 📥 ve 🖨️ butonları */
+        .action-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            display: flex;
+            gap: 10px;
+            z-index: 999;
+        }
+
+        .action-btn button {
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .action-btn button:hover,
+        .back-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        @media print {
+            .back-btn, .action-btn {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 🔙 Geri Butonu -->
+    <button class="back-btn" onclick="history.back()">⬅ Geri</button>
+
+    <!-- 📥 İndir & 🖨️ Yazdır -->
+    <div class="action-btn">
+        <button onclick="downloadImage()">📥 İndir</button>
+        <button onclick="window.print()">🖨️ Yazdır</button>
+    </div>
+
+    <!-- 🖼️ Görsel Konteyneri -->
+    <div class="img-container">
+        <img id="mainImage" src="{{ image.image.url }}" alt="Görsel">
+    </div>
+
+    <script>
+        const img = document.getElementById('mainImage');
+        let scale = 1;
+        let posX = 0, posY = 0;
+        let isDragging = false;
+        let lastX = 0, lastY = 0;
+
+        // 🔍 Fare tekerleğiyle zoom
+        window.addEventListener('wheel', e => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? -0.1 : 0.1;
+            scale = Math.min(Math.max(0.5, scale + delta), 5);
+            updateTransform();
+        });
+
+        // 🖱️ Görseli sürükleme
+        img.addEventListener('mousedown', e => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            img.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            img.style.cursor = 'grab';
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            posX += (e.clientX - lastX);
+            posY += (e.clientY - lastY);
+            lastX = e.clientX;
+            lastY = e.clientY;
+            updateTransform();
+        });
+
+        // 📱 Dokunmatik zoom (pinch gesture)
+        let initialDistance = 0;
+        let initialScale = 1;
+
+        window.addEventListener('touchstart', e => {
+            if (e.touches.length === 2) {
+                initialDistance = getDistance(e.touches);
+                initialScale = scale;
+            } else if (e.touches.length === 1) {
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            }
+        });
+
+        window.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (e.touches.length === 2) {
+                const newDistance = getDistance(e.touches);
+                const scaleChange = newDistance / initialDistance;
+                scale = Math.min(Math.max(0.5, initialScale * scaleChange), 5);
+            } else if (e.touches.length === 1) {
+                posX += (e.touches[0].clientX - lastX);
+                posY += (e.touches[0].clientY - lastY);
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            }
+            updateTransform();
+        });
+
+        function getDistance(touches) {
+            const [a, b] = touches;
+            return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+        }
+
+        function updateTransform() {
+            img.style.transform = `translate(${posX}px, ${posY}px) scale(${scale})`;
+        }
+
+        // 📥 Görseli indir
+        function downloadImage() {
+            const link = document.createElement('a');
+            link.href = img.src;
+            link.download = img.src.split('/').pop();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+
+</body>
+</html>

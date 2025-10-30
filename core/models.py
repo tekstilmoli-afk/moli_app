@@ -229,6 +229,7 @@ class Order(models.Model):
         # Normal kaydı yap
         super().save(*args, **kwargs)
 
+
         # ✅ QR kodu sadece ilk oluşturulduğunda üret
         if creating and not self.qr_code_url:
             base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
@@ -260,6 +261,16 @@ class Order(models.Model):
 
     def __str__(self):
         return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
+
+# 📷 Siparişe bağlı görseller (çoklu yükleme desteği)
+class OrderImage(models.Model):
+    order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='extra_images')
+    image = models.ImageField(upload_to='siparis_ek_gorselleri/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Görsel - {self.order.siparis_numarasi or self.order.id}"
+
 
 
 # 📜 ÜRETİM GEÇMİŞİ
