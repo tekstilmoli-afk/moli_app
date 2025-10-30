@@ -14,7 +14,7 @@ from django.db.models import Sum, F, ExpressionWrapper, FloatField
 from django.db.models import Subquery, OuterRef
 from django.db.models.functions import Coalesce
 
-from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost
+from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost, OrderImage
 from .forms import OrderForm, MusteriForm
 
 
@@ -57,6 +57,12 @@ def apply_filters(request, qs):
         qs = qs.order_by(f"-{sort_col}" if sort_dir == "desc" else sort_col)
 
     return qs
+
+# 🖼️ Tek görseli tam ekranda görüntüleme
+@login_required
+def view_image(request, image_id):
+    image = get_object_or_404(OrderImage, id=image_id)
+    return render(request, "core/view_image.html", {"image": image})
 
 
 # 📋 Sipariş Listeleme
@@ -452,6 +458,19 @@ def order_edit(request, pk):
 
 
 
+@login_required
+def order_add_image(request, pk):
+    order = get_object_or_404(Order, pk=pk)
+
+    # Sadece patron veya müdür yükleyebilir
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
+
+    if request.method == "POST":
+        for file in request.FILES.getlist("images"):
+            OrderImage.objects.create(order=order, image=file)
+
+    return redirect("order_detail", pk=pk)
 
 
 
