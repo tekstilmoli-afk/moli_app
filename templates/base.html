@@ -1,11 +1,32 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}MoliApp{% endblock %}</title>
+
+    <!-- 📱 PWA META (Android + iOS uyumlu) -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- 🍏 iOS uyumu -->
+    <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MoliApp">
+
+    <!-- 💫 Splash ekranlar (isteğe bağlı, icons klasörüne eklenecek) -->
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-640x1136.png' %}" media="(device-width: 320px)">
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-750x1334.png' %}" media="(device-width: 375px)">
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-1125x2436.png' %}" media="(device-width: 414px)">
+    <link rel="apple-touch-startup-image" href="{% static 'icons/splash-1242x2688.png' %}" media="(device-width: 428px)">
+
+    <!-- Bootstrap ve FontAwesome -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
     <style>
         body {
             background-color: #f8f9fa;
@@ -16,32 +37,42 @@
         .content-container {
             padding: 20px;
         }
+        /* iPhone X ve üstü safe-area boşluk düzeltmesi */
+        @supports (padding: env(safe-area-inset-top)) {
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+        }
     </style>
 </head>
 <body>
-    <!-- 🧭 NAVBAR -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">MoliApp</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/management/">
-                            <i class="fa-solid fa-chart-line"></i> Yönetim Paneli
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/logout/">
-                            <i class="fa-solid fa-right-from-bracket"></i> Çıkış
-                        </a>
-                    </li>
-                </ul>
+
+    {% if request.path != '/login/' %}
+        <!-- 🧭 NAVBAR -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="/">MoliApp</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/management/">
+                                <i class="fa-solid fa-chart-line"></i> Yönetim Paneli
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/logout/">
+                                <i class="fa-solid fa-right-from-bracket"></i> Çıkış
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
+    {% endif %}
 
     <!-- 📌 Sayfa içeriği -->
     <div class="container content-container">
@@ -49,6 +80,18 @@
         {% endblock %}
     </div>
 
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- ✅ Service Worker kaydı (Android + iOS için PWA aktif etme) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register("{% static 'service-worker.js' %}")
+                .then(reg => console.log("✅ Service Worker kayıtlı:", reg.scope))
+                .catch(err => console.warn("⚠️ Service Worker hatası:", err));
+            });
+        }
+    </script>
 </body>
 </html>
