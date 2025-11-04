@@ -15,6 +15,9 @@ from django.db.models import Subquery, OuterRef
 from django.db.models.functions import Coalesce
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
+from django.contrib.auth.models import User
+from datetime import datetime, timedelta
+
 
 from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost, OrderImage
 from .forms import OrderForm, MusteriForm
@@ -653,55 +656,43 @@ def user_management_view(request):
     return render(request, "user_management.html", context)
 
 
-# 👷 PERSONEL ÇALIŞMA RAPORU
 @login_required
 def staff_reports_view(request):
+    users = User.objects.all()
+    selected_user = request.GET.get("user")
     start_date = request.GET.get("start")
     end_date = request.GET.get("end")
-    gorev_filter = request.GET.get("gorev")
 
-    events = OrderEvent.objects.all()
+    events = []
 
-    if start_date:
-        events = events.filter(timestamp__date__gte=start_date)
-    if end_date:
-        events = events.filter(timestamp__date__lte=end_date)
-    if gorev_filter:
-        events = events.filter(gorev=gorev_filter)
+    # Sadece filtreleme yapılmışsa verileri getir
+    if selected_user and start_date and end_date:
+        try:
+            user = User.objects.get(username=selected_user)
+            start = datetime.strptime(start_date, "%Y-%m-%d")
+            end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
 
-    staff_summary = (
-        events.values("user")
-        .annotate(total_events=Count("id"), last_activity=Max("timestamp"))
-        .order_by("-total_events")
-    )
-
-    user_profiles = UserProfile.objects.select_related("user").all()
-    user_to_gorev = {up.user.username: up.gorev for up in user_profiles}
-
-    stage_data = {}
-    for e in events:
-        username = e.user
-        stage = e.stage or "-"
-        if username not in stage_data:
-            stage_data[username] = {}
-        stage_data[username][stage] = stage_data[username].get(stage, 0) + 1
-
-    stage_data_display = {
-        user: [{"stage": s, "count": c} for s, c in stages.items()]
-        for user, stages in stage_data.items()
-    }
+            events = (
+                OrderEvent.objects.filter(
+                    user=user,
+                    timestamp__range=[start, end]
+                )
+                .select_related("order", "order__musteri")
+                .order_by("-timestamp")
+            )
+        except User.DoesNotExist:
+            pass
 
     context = {
-        "staff_summary": staff_summary,
-        "stage_data": stage_data_display,
-        "user_to_gorev": user_to_gorev,
-        "start_date": start_date or "",
-        "end_date": end_date or "",
-        "gorev_filter": gorev_filter or "",
-        "GOREVLER": UserProfile.GOREV_SECENEKLERI,
+        "users": users,
+        "events": events,
+        "selected_user": selected_user,
+        "start_date": start_date,
+        "end_date": end_date,
     }
-
     return render(request, "reports/staff_reports.html", context)
+
+
 
 @login_required
 def fast_profit_report(request):
@@ -823,8 +814,29 @@ def management_panel(request):
     if not any(role in user_groups for role in ["patron", "mudur"]):
         return redirect("order_list")
 
+    # 📅 Bugünün tarihini al
+    today = timezone.now().date()
+
+    # 🔹 Bugün yapılan işlemleri grupla (personel bazlı)
+    events_today = (
+        OrderEvent.objects.filter(timestamp__date=today)
+        .values("user")
+        .annotate(total=Count("id"), last_time=Max("timestamp"))
+        .order_by("-total")
+    )
+
+    # 🔹 Kullanıcı görev bilgilerini al
+    user_profiles = {p.user.username: p.gorev for p in UserProfile.objects.all()}
+
+    context = {
+        "events_today": events_today,
+        "user_profiles": user_profiles,
+        "today": today,
+    }
+
     # Yönetim paneli sayfasını göster
-    return render(request, "management_panel.html")
+    return render(request, "management_panel.html", context)
+
 
 # 📊 RAPORLAR ANA SAYFASI (Raporlara Git →)
 @login_required

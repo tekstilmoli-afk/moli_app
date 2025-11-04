@@ -1,4 +1,5 @@
 {% load static %}
+{% load custom_tags %}
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -47,6 +48,9 @@
         .card-title {
             font-size: 16px;
             font-weight: 600;
+        }
+        table th {
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -116,6 +120,8 @@
         </div>
     </div>
 </div>
+
+
 
 <!-- 🔧 Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
