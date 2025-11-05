@@ -1,4 +1,5 @@
 {% load static %}
+{% load custom_tags %}
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -58,18 +59,17 @@
     <a href="/management/" class="btn btn-outline-primary btn-sm mb-3">← Geri Dön</a>
 
     <!-- Üst başlık ve butonlar -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>📋 Sipariş Listesi</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📋 Sipariş Listesi</h2>
 
-    <div class="d-flex gap-2">
-        {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
-            <a href="{% url 'order_create' %}" class="btn btn-success btn-sm">🟢 Yeni Sipariş Ekle</a>
-            <a href="{% url 'musteri_create' %}" class="btn btn-primary btn-sm">👤 Müşteri Ekle</a>
-        {% endif %}
-        <a href="/" class="btn btn-outline-secondary btn-sm">Ana Sayfa</a>
+        <div class="d-flex gap-2">
+            {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
+                <a href="{% url 'order_create' %}" class="btn btn-success btn-sm">🟢 Yeni Sipariş Ekle</a>
+                <a href="{% url 'musteri_create' %}" class="btn btn-primary btn-sm">👤 Müşteri Ekle</a>
+            {% endif %}
+            <a href="/" class="btn btn-outline-secondary btn-sm">Ana Sayfa</a>
+        </div>
     </div>
-</div>
-
 
     <!-- 🔍 Filtreleme Butonları -->
     <div class="d-flex justify-content-end gap-2 mb-3">
@@ -100,79 +100,77 @@
                 </tr>
             </thead>
             <tbody>
-{% for order in orders %}
-<tr>
-    <td>{{ order.siparis_numarasi }}</td>
-    <td>{{ order.musteri }}</td>
-    <td>{{ order.urun_kodu }}</td>
-    <td>{{ order.adet }}</td>
-    <td>{{ order.renk }}</td>
-    <td>{{ order.beden }}</td>
-    <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.siparis_numarasi }}</td>
+                    <td>{{ order.musteri }}</td>
+                    <td>{{ order.urun_kodu }}</td>
+                    <td>{{ order.adet }}</td>
+                    <td>{{ order.renk }}</td>
+                    <td>{{ order.beden }}</td>
+                    <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
 
-    <td class="status-cell">
-        {% if order.last_event %}
-            <small class="fw-semibold">{{ order.formatted_status }}</small>
-        {% else %}
-            <span class="text-muted fst-italic">-</span>
-        {% endif %}
-    </td>
-
-    <td>
-        {% if order.qr_code_url %}
-            <img class="qr-img" src="{{ order.qr_code_url }}" alt="QR Kod">
-        {% else %}
-            <span class="text-muted small fst-italic">QR Yok</span>
-        {% endif %}
-    </td>
-
-    <td>
-        {% if order.qr_code_url %}
-    <button class="btn btn-sm btn-outline-secondary print-btn"
-        onclick="printLabel(
-            '{{ order.qr_code_url }}',
-            '{{ order.siparis_numarasi|escapejs }}',
-            '{{ order.siparis_tipi|escapejs }}',
-            '{{ order.musteri|escapejs }}',
-            '{{ order.urun_kodu|escapejs }}',
-            '{{ order.renk|escapejs }}',
-            '{{ order.beden|escapejs }}',
-            '{{ order.musteri_referans|default_if_none:''|escapejs }}'
-        )">
-        🖨️ Yazdır
-    </button>
+                    <!-- ✅ SON DURUM -->
+                    <td class="status-cell">
+                        {% if order.formatted_status and order.formatted_status != "-" %}
+    <small class="fw-semibold">{{ order.formatted_status }}</small>
 {% else %}
-    <span class="text-muted small fst-italic">-</span>
+    <span class="text-muted fst-italic">-</span>
 {% endif %}
+                    </td>
 
+                    <td>
+                        {% if order.qr_code_url %}
+                            <img class="qr-img" src="{{ order.qr_code_url }}" alt="QR Kod">
+                        {% else %}
+                            <span class="text-muted small fst-italic">QR Yok</span>
+                        {% endif %}
+                    </td>
 
+                    <td>
+                        {% if order.qr_code_url %}
+                            <button class="btn btn-sm btn-outline-secondary print-btn"
+                                onclick="printLabel(
+                                    '{{ order.qr_code_url }}',
+                                    '{{ order.siparis_numarasi|escapejs }}',
+                                    '{{ order.siparis_tipi|escapejs }}',
+                                    '{{ order.musteri|escapejs }}',
+                                    '{{ order.urun_kodu|escapejs }}',
+                                    '{{ order.renk|escapejs }}',
+                                    '{{ order.beden|escapejs }}',
+                                    '{{ order.musteri_referans|default_if_none:''|escapejs }}'
+                                )">
+                                🖨️ Yazdır
+                            </button>
+                        {% else %}
+                            <span class="text-muted small fst-italic">-</span>
+                        {% endif %}
+                    </td>
 
+                    <td>
+                        {% if order.id %}
+                            <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">Görüntüle</a>
+                        {% else %}
+                            <span class="text-muted small fst-italic">Yok</span>
+                        {% endif %}
 
-    <td>
-        {% if order.id %}
-            <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">Görüntüle</a>
-        {% else %}
-            <span class="text-muted small fst-italic">Yok</span>
-        {% endif %}
-
-        {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
-    <button 
-      class="btn btn-sm btn-danger ms-1"
-      onclick="deleteOrderInstant(this, '{{ order.id }}')">
-      Sil
-    </button>
-{% endif %}
-    </td>
-
-</tr>
-{% empty %}
-<tr>
-    <td colspan="11" class="text-center text-muted py-4">
-        Henüz sipariş bulunmuyor.
-    </td>
-</tr>
-{% endfor %}
-        </tbody>
+                        {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
+                            <button 
+                              class="btn btn-sm btn-danger ms-1"
+                              onclick="deleteOrderInstant(this, '{{ order.id }}')">
+                              Sil
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" class="text-center text-muted py-4">
+                        Henüz sipariş bulunmuyor.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
 </div>
@@ -188,11 +186,10 @@
 
       <form method="get">
         <div class="modal-body">
-
           <!-- ✅ Sipariş Numarası -->
           <div class="mb-3">
             <label class="form-label">Sipariş Numarası</label>
-            <select name="siparis_no" class="selectpicker" multiple data-live-search="true" data-width="100%" data-close-on-select="true">
+            <select name="siparis_no" class="selectpicker" multiple data-live-search="true" data-width="100%">
                 {% for s in siparis_options %}
                     <option value="{{ s }}" {% if s in siparis_no_selected %}selected{% endif %}>{{ s }}</option>
                 {% endfor %}
@@ -202,7 +199,7 @@
           <!-- ✅ Müşteri -->
           <div class="mb-3">
             <label class="form-label">Müşteri</label>
-            <select name="musteri" class="selectpicker" multiple data-live-search="true" data-width="100%" data-close-on-select="true">
+            <select name="musteri" class="selectpicker" multiple data-live-search="true" data-width="100%">
                 {% for m in musteri_options %}
                     <option value="{{ m }}" {% if m in musteri_selected %}selected{% endif %}>{{ m }}</option>
                 {% endfor %}
@@ -212,7 +209,7 @@
           <!-- ✅ Ürün Kodu -->
           <div class="mb-3">
             <label class="form-label">Ürün Kodu</label>
-            <select name="urun_kodu" class="selectpicker" multiple data-live-search="true" data-width="100%" data-close-on-select="true">
+            <select name="urun_kodu" class="selectpicker" multiple data-live-search="true" data-width="100%">
                 {% for u in urun_options %}
                     <option value="{{ u }}" {% if u in urun_kodu_selected %}selected{% endif %}>{{ u }}</option>
                 {% endfor %}
@@ -222,7 +219,7 @@
           <!-- ✅ Renk -->
           <div class="mb-3">
             <label class="form-label">Renk</label>
-            <select name="renk" class="selectpicker" multiple data-live-search="true" data-width="100%" data-close-on-select="true">
+            <select name="renk" class="selectpicker" multiple data-live-search="true" data-width="100%">
                 {% for r in renk_options %}
                     <option value="{{ r }}" {% if r in renk_selected %}selected{% endif %}>{{ r }}</option>
                 {% endfor %}
@@ -232,7 +229,7 @@
           <!-- ✅ Beden -->
           <div class="mb-3">
             <label class="form-label">Beden</label>
-            <select name="beden" class="selectpicker" multiple data-live-search="true" data-width="100%" data-close-on-select="true">
+            <select name="beden" class="selectpicker" multiple data-live-search="true" data-width="100%">
                 {% for b in beden_options %}
                     <option value="{{ b }}" {% if b in beden_selected %}selected{% endif %}>{{ b }}</option>
                 {% endfor %}
@@ -242,7 +239,7 @@
           <!-- ✅ Üretim Durumu -->
           <div class="mb-3">
             <label class="form-label">Üretim Durumu</label>
-            <select name="status" class="selectpicker" multiple data-live-search="true" data-width="100%" data-close-on-select="true">
+            <select name="status" class="selectpicker" multiple data-live-search="true" data-width="100%">
                 {% for s in status_options %}
                     <option value="{{ s }}" {% if s in status_selected %}selected{% endif %}>{{ s }}</option>
                 {% endfor %}
@@ -257,7 +254,6 @@
                 <input type="date" name="teslim_tarihi_bitis" class="form-control form-control-sm" value="{{ teslim_bitis_selected }}">
             </div>
           </div>
-
         </div>
 
         <div class="modal-footer">
@@ -265,7 +261,6 @@
           <button type="submit" class="btn btn-primary">Filtreyi Uygula</button>
         </div>
       </form>
-
     </div>
   </div>
 </div>
@@ -276,10 +271,8 @@
 <!-- 🔽 Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- ✅ Bootstrap Select CSS -->
+<!-- ✅ Bootstrap Select -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
-
-<!-- ✅ Bootstrap Select JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
 
 <script>
@@ -323,16 +316,12 @@ function printLabel(qrUrl, siparisNo, tipi, musteri, urunKodu, renk, beden, must
 
 function deleteOrderInstant(button, orderId) {
     if (!confirm("Bu siparişi silmek istediğinize emin misiniz?")) return;
-
     const row = button.closest('tr');
     const originalHTML = row.outerHTML;
     row.remove();
-
     fetch(`/orders/${orderId}/delete/`, {
         method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content,
-        },
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     })
     .then(response => {
         if (!response.ok) {
@@ -348,7 +337,6 @@ function deleteOrderInstant(button, orderId) {
     });
 }
 
-// ✅ Filtre menülerinde seçim sonrası otomatik kapanma
 document.addEventListener('DOMContentLoaded', function () {
     $('.selectpicker').selectpicker();
     $('.selectpicker').on('changed.bs.select', function () {

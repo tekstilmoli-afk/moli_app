@@ -70,11 +70,12 @@ def view_image(request, image_id):
     return render(request, "core/view_image.html", {"image": image})
 
 
-# 📋 Sipariş Listeleme (optimize edilmiş)
+# 📋 Sipariş Listeleme (Son Durum düzeltildi)
 @login_required
 def order_list(request):
     from django.db.models import OuterRef, Subquery, Q
 
+    # ✅ Türkçe açıklamalı durum sözlüğü
     STAGE_TRANSLATIONS = {
         ("dikim_durum", "sıraya_alındı"): "Dikime Alındı",
         ("susleme_durum", "sıraya_alındı"): "Süsleme Sırasına Alındı",
@@ -94,13 +95,14 @@ def order_list(request):
         ("sevkiyat_durum", "gonderildi"): "Sevkiyat Gönderildi",
     }
 
-    # ✅ Her siparişin son event’ini tek sorguda alıyoruz
+    # ✅ Her siparişin son event’ini tek sorguda al
     latest_event = (
         OrderEvent.objects.filter(order=OuterRef("pk"))
         .order_by("-timestamp")
         .values("stage", "value")[:1]
     )
 
+    # ✅ Ana sorgu (performanslı)
     qs = (
         Order.objects.select_related("musteri")
         .only(
@@ -116,7 +118,6 @@ def order_list(request):
             "aciklama",
             "musteri__ad",
             "qr_code_url",
-            "resim",
         )
         .annotate(
             latest_stage=Subquery(latest_event.values("stage")),
@@ -143,7 +144,7 @@ def order_list(request):
     if bedenler:
         qs = qs.filter(beden__in=bedenler)
 
-    # ✅ Durum filtresi (tek sorguda)
+    # ✅ Durum filtresi (stage/value eşleştirmesiyle)
     if status_filter:
         stage_value_pairs = [
             key for key, val in STAGE_TRANSLATIONS.items() if val in status_filter
@@ -156,7 +157,6 @@ def order_list(request):
     # ✅ Teslim Tarihi Aralığı
     teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
     teslim_bitis = request.GET.get("teslim_tarihi_bitis")
-
     if teslim_baslangic and teslim_bitis:
         qs = qs.filter(teslim_tarihi__range=[teslim_baslangic, teslim_bitis])
     elif teslim_baslangic:
@@ -164,7 +164,7 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
-    # ✅ Ek filtre
+    # ✅ Ek arama filtreleri (ortak fonksiyon)
     qs = apply_filters(request, qs)
 
     if not qs.query.order_by:
@@ -174,7 +174,7 @@ def order_list(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
-    # ✅ Artık döngü çok hafif
+    # ✅ Son durumun okunabilir formatta hazırlanması
     for order in page_obj:
         if order.latest_stage and order.latest_value:
             order.formatted_status = STAGE_TRANSLATIONS.get(
@@ -184,7 +184,7 @@ def order_list(request):
         else:
             order.formatted_status = "-"
 
-    # ✅ Modal seçenekleri
+    # ✅ Modal filtre seçenekleri
     siparis_options = Order.objects.order_by().values_list("siparis_numarasi", flat=True).distinct()
     musteri_options = Order.objects.order_by().values_list("musteri__ad", flat=True).distinct()
     urun_options = Order.objects.order_by().values_list("urun_kodu", flat=True).distinct()
@@ -211,6 +211,7 @@ def order_list(request):
     }
 
     return render(request, "core/order_list.html", context)
+
 
 
 
@@ -700,25 +701,20 @@ def fast_profit_report(request):
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu sayfaya erişim yetkiniz yok.")
 
-    from django.db.models import F, Sum, ExpressionWrapper, FloatField, Q
+    from django.db.models import F, Sum, ExpressionWrapper, DecimalField, OuterRef, Subquery, Value
     from django.db.models.functions import Coalesce
-    from django.db.models import Subquery, OuterRef
+    from datetime import datetime
 
     musteri = request.GET.get("musteri")
     tarih1 = request.GET.get("t1")
     tarih2 = request.GET.get("t2")
 
-    # Her sipariş için EN SON event (timestamp'e göre) bilgisini çekiyoruz
+    # 🧠 Her siparişin en son event'ini al
     latest_event = OrderEvent.objects.filter(order=OuterRef("pk")).order_by("-timestamp")
 
-    # Sadece EN SON durumu "sevkiyat_durum = gonderildi" olan siparişler
+    # 🔍 Sadece son event'i "sevkiyat_durum = gonderildi" olan siparişleri al
     orders = (
         Order.objects.select_related("musteri")
-        .only(
-            "id", "siparis_numarasi", "musteri__ad", "urun_kodu", "adet",
-            "satis_fiyati", "maliyet_uygulanan", "ekstra_maliyet",
-            "maliyet_override", "siparis_tarihi"
-        )
         .annotate(
             latest_stage=Subquery(latest_event.values("stage")[:1]),
             latest_value=Subquery(latest_event.values("value")[:1]),
@@ -726,42 +722,62 @@ def fast_profit_report(request):
         .filter(latest_stage="sevkiyat_durum", latest_value="gonderildi")
     )
 
-    # İsteğe bağlı filtreler
+    # 🔸 Tarih ve müşteri filtreleri
     if musteri:
         orders = orders.filter(musteri__ad__icontains=musteri)
     if tarih1 and tarih2:
-        orders = orders.filter(siparis_tarihi__range=[tarih1, tarih2])
+        try:
+            t1 = datetime.strptime(tarih1, "%Y-%m-%d")
+            t2 = datetime.strptime(tarih2, "%Y-%m-%d")
+            orders = orders.filter(siparis_tarihi__range=[t1, t2])
+        except ValueError:
+            pass
+    elif tarih1:
+        orders = orders.filter(siparis_tarihi__gte=tarih1)
+    elif tarih2:
+        orders = orders.filter(siparis_tarihi__lte=tarih2)
 
-    # Etkin maliyet ve kâr (alias çakışmasın diye farklı isimler)
+    # 💰 Etkin maliyet & net kâr (kar property’siyle çakışmasın diye net_kar)
     eff_cost_expr = (
-        Coalesce(F("maliyet_uygulanan"), 0.0) +
-        Coalesce(F("ekstra_maliyet"), 0.0) +
-        Coalesce(F("maliyet_override"), 0.0)
+        Coalesce(F("maliyet_uygulanan"), Value(0, output_field=DecimalField()))
+        + Coalesce(F("ekstra_maliyet"), Value(0, output_field=DecimalField()))
+        + Coalesce(F("maliyet_override"), Value(0, output_field=DecimalField()))
     )
+
     orders = orders.annotate(
-        eff_cost_sql=ExpressionWrapper(eff_cost_expr, output_field=FloatField()),
-        profit_sql=ExpressionWrapper(F("satis_fiyati") - eff_cost_expr, output_field=FloatField()),
+        ef_maliyet=ExpressionWrapper(
+            eff_cost_expr, output_field=DecimalField(max_digits=15, decimal_places=2)
+        ),
+        net_kar=ExpressionWrapper(
+            F("satis_fiyati") - eff_cost_expr, output_field=DecimalField(max_digits=15, decimal_places=2)
+        ),
     )
 
-    # Toplamlar
+    # 🔢 Toplamlar (ef_maliyet ve net_kar üzerinden)
     toplamlar = orders.aggregate(
-        toplam_ciro=Sum("satis_fiyati"),
-        toplam_maliyet=Sum("eff_cost_sql"),
-        toplam_kar=Sum("profit_sql"),
+        toplam_ciro=Coalesce(Sum("satis_fiyati", output_field=DecimalField()), Value(0, output_field=DecimalField())),
+        toplam_maliyet=Coalesce(Sum("ef_maliyet", output_field=DecimalField()), Value(0, output_field=DecimalField())),
+        toplam_kar=Coalesce(Sum("net_kar", output_field=DecimalField()), Value(0, output_field=DecimalField())),
     )
 
-    # Sayfalama (hız için 20 satır)
+    # 📄 Sayfalama
     paginator = Paginator(orders.order_by("-id"), 20)
     page_obj = paginator.get_page(request.GET.get("page"))
 
     context = {
         "page_obj": page_obj,
-        "toplam_ciro": toplamlar["toplam_ciro"] or 0,
-        "toplam_maliyet": toplamlar["toplam_maliyet"] or 0,
-        "toplam_kar": toplamlar["toplam_kar"] or 0,
+        "toplam_ciro": toplamlar["toplam_ciro"],
+        "toplam_maliyet": toplamlar["toplam_maliyet"],
+        "toplam_kar": toplamlar["toplam_kar"],
         "musteri": musteri or "",
     }
+
     return render(request, "reports/fast_profit_report.html", context)
+
+
+
+
+
 
 
 
