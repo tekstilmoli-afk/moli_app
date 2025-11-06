@@ -1,11 +1,11 @@
 """
-Django settings for moli project.
+Django settings for moli project (optimized for PostgreSQL + Render).
 """
 
 from pathlib import Path
 import os
 import dj_database_url
-from dotenv import load_dotenv  # 👈 .env dosyasını okumak için
+from dotenv import load_dotenv
 
 # 📌 .env dosyasını yükle
 load_dotenv()
@@ -13,13 +13,9 @@ load_dotenv()
 # 📌 Ana dizin yolu
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ⚠️ Güvenlik
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-=txqn8ko9(2^=#k50qxd^@y-6gujv3a0%f283zfkz23@_i2wy#')
-
-# 💡 DEBUG ayarı (.env'den okunur)
+# ⚙️ Güvenlik
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-placeholder')
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
-
-# 🌐 İzin verilen hostlar (Render + Local)
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost,.onrender.com').split(',')
 
 # 📦 Yüklü uygulamalar
@@ -33,25 +29,25 @@ INSTALLED_APPS = [
     'core',
 ]
 
-# 🌐 Middleware sırası — ✅ DÜZELTİLMİŞ
+# 🌐 Middleware sırası — ⚡️ Düzenlenmiş
 MIDDLEWARE = [
+    'django.middleware.cache.UpdateCacheMiddleware',  # ⚡️ Cache en üste
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',  # ⬅️ Giriş kontrolü cache'ten önce
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # ⬇️ Cache middleware'leri en alta
-    'django.middleware.cache.UpdateCacheMiddleware',
-    'django.middleware.cache.FetchFromCacheMiddleware',
+    'django.middleware.cache.FetchFromCacheMiddleware',  # ⚡️ Cache en alta
 ]
 
 # 📌 URL ve WSGI ayarları
 ROOT_URLCONF = 'moli.urls'
+WSGI_APPLICATION = 'moli.wsgi.application'
 
-# 📝 Template ayarları (HTML dosyalarını bulması için)
+# 📝 Template ayarları
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -68,18 +64,24 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'moli.wsgi.application'
-
-# 🗃️ Veritabanı (Render / Railway)
+# 🗃️ PostgreSQL — ⚙️ Optimize edilmiş bağlantı ayarları
 DATABASES = {
-    'default': dj_database_url.parse(
-        os.getenv('DATABASE_URL', 'postgresql://postgres:xUPplVVDFeKUSjnfTgtxIvvrZAWnMSaq@switchyard.proxy.rlwy.net:23849/railway'),
+    'default': dj_database_url.config(
+        default=os.getenv(
+            'DATABASE_URL',
+            'postgresql://postgres:xUPplVVDFeKUSjnfTgtxIvvrZAWnMSaq@switchyard.proxy.rlwy.net:23849/railway'
+        ),
         conn_max_age=600,
         ssl_require=True
     )
 }
 
-# 🔐 Şifre doğrulama
+# ⚡ PostgreSQL performans seçenekleri
+DATABASES['default']['OPTIONS'] = {
+    'options': '-c statement_timeout=30000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=10000'
+}
+
+# 🔒 Şifre doğrulama
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -87,36 +89,57 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# 🌍 Dil ve saat ayarları
+# 🌍 Dil / Zaman
 LANGUAGE_CODE = 'tr'
 TIME_ZONE = 'Europe/Istanbul'
 USE_I18N = True
 USE_TZ = True
 
-# 🧠 Cache
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+# 🧠 Cache (Redis varsa kullan, yoksa LocMem)
+if os.getenv('REDIS_URL'):
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': os.getenv('REDIS_URL'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': True,
+            }
+        }
     }
-}
-CACHE_MIDDLEWARE_SECONDS = 60
-CACHE_MIDDLEWARE_KEY_PREFIX = ''
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
 
-# 🧰 Statik dosyalar
+CACHE_MIDDLEWARE_SECONDS = 120  # 2 dakika cache
+CACHE_MIDDLEWARE_KEY_PREFIX = 'moli'
+
+# 🧭 Oturum ayarları (Cache + DB)
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+SESSION_COOKIE_AGE = 15 * 60
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# 🧰 Statik / Medya dosyaları
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-]
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# 📂 Medya dosyaları
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# 🌍 Production için Whitenoise ayarı
+# 🌍 Production — Whitenoise sıkıştırma
 if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# 🔐 HTTPS güvenlik ayarları
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 # 👤 Giriş / çıkış yönlendirmeleri
 LOGIN_URL = "/login/"
@@ -126,13 +149,9 @@ LOGOUT_REDIRECT_URL = "/login/"
 # 🆔 Varsayılan Primary Key tipi
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# 🌐 Supabase Ayarları (QR kodları burada saklayacağız)
+# 🌐 Supabase Ayarları
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 SUPABASE_BUCKET_NAME = os.getenv('SUPABASE_BUCKET_NAME', 'qr-codes')
 
-BASE_URL = "https://moli-app.onrender.com"
-
-# 🧭 Oturum ayarları (15 dakika)
-SESSION_COOKIE_AGE = 15 * 60  # 15 dakika
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+BASE_URL = os.getenv('BASE_URL', 'https://moli-app.onrender.com')

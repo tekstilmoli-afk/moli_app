@@ -17,7 +17,7 @@ from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib.auth.models import User
 from datetime import datetime, timedelta
-
+from django.views.decorators.cache import never_cache
 
 from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost, OrderImage
 from .forms import OrderForm, MusteriForm
@@ -280,6 +280,7 @@ def musteri_search(request):
 
 # 📌 Sipariş Detay (Geçmiş Dahil)
 @login_required
+@never_cache
 def order_detail(request, pk):
     order = get_object_or_404(Order.objects.select_related("musteri"), pk=pk)
     nakisciler = Nakisci.objects.all()
