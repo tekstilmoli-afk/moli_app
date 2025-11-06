@@ -22,13 +22,79 @@
     margin-bottom: 5px;
 }
 
-/* ✅ Yazdırırken görünmesini istemediklerimiz */
+/* ✅ Yazdırma stili düzenlendi */
 @media print {
-    .no-print, .cost-section, .extra-images-section {
+    /* Genel küçültme — font ve tablo sığsın */
+    body {
+        zoom: 0.8;
+        font-size: 12px !important;
+        line-height: 1.2;
+        color: #000 !important;
+        background: #fff !important;
+    }
+
+    /* Yazıcı kenar boşluğu */
+    @page {
+        margin: 10mm;
+        size: A4 portrait;
+    }
+
+    /* Ekranda görünen ama yazdırılmaması gereken alanlar */
+    .no-print,
+    .cost-section,
+    .extra-images-section form {
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
         overflow: hidden !important;
+    }
+
+    /* Kart kenar boşlukları */
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #999 !important;
+        padding: 10px !important;
+        margin: 0 !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        margin: 4px 0 !important;
+        font-weight: 600 !important;
+    }
+
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 11px !important;
+    }
+
+    th, td {
+        padding: 4px 6px !important;
+        border: 1px solid #666 !important;
+        vertical-align: middle !important;
+    }
+
+    img {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    /* QR Kod boyutu */
+    img[alt="QR Kod"] {
+        max-height: 80px !important;
+        margin-top: 5px !important;
+        margin-bottom: 5px !important;
+    }
+
+    /* İlk sayfa boş çıkmasını engelle */
+    body::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    .container {
+        width: 100% !important;
+        margin: 0 auto !important;
     }
 }
 
