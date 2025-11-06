@@ -448,27 +448,55 @@ def order_edit(request, pk):
 def order_add_image(request, pk):
     order = get_object_or_404(Order, pk=pk)
 
-    # Sadece patron veya müdür yükleyebilir
+    # 🛡️ Yalnızca patron veya müdür yükleme yapabilir
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
 
     if request.method == "POST":
-        for file in request.FILES.getlist("images"):
-            OrderImage.objects.create(order=order, image=file)
+        images = request.FILES.getlist("images")
+        if not images:
+            messages.warning(request, "Herhangi bir dosya seçilmedi.")
+            return redirect("order_detail", pk=pk)
 
-    return redirect("order_detail", pk=pk)
+        for file in images:
+            try:
+                OrderImage.objects.create(order=order, image=file)
+            except Exception as e:
+                print("⚠️ Görsel yükleme hatası:", e)
+                messages.error(request, f"{file.name} yüklenemedi: {e}")
 
+        messages.success(request, f"{len(images)} görsel başarıyla yüklendi ✅")
+        return redirect("order_detail", pk=pk)
+
+    return HttpResponseForbidden("Geçersiz istek yöntemi.")
 
 @login_required
 def delete_order_image(request, image_id):
-    if not request.user.is_staff:
-        return redirect("order_list")
+    # 🛡️ Sadece patron veya müdür silebilir
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
 
     image = get_object_or_404(OrderImage, id=image_id)
     order_id = image.order.id
+
+    # 🧹 Supabase tarafında da silmeyi istiyorsan (opsiyonel)
+    try:
+        from django.conf import settings
+        from supabase import create_client
+        import os
+
+        supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+        filename = os.path.basename(image.image_url or "")
+        if filename:
+            supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).remove([filename])
+    except Exception as e:
+        print("⚠️ Supabase silme hatası:", e)
+
+    # 🔸 Veritabanından kaydı sil
     image.delete()
     messages.success(request, "Görsel başarıyla silindi.")
-    return redirect("order_detail", order_id)
+    return redirect("order_detail", pk=order_id)
+
 
 @login_required
 def delete_order_event(request, event_id):

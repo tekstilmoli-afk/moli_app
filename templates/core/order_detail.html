@@ -22,79 +22,67 @@
     margin-bottom: 5px;
 }
 
-/* ✅ Yazdırma stili düzenlendi */
+/* ✅ Yazdırma ayarları */
 @media print {
-    /* Genel küçültme — font ve tablo sığsın */
-    body {
-        zoom: 0.8;
-        font-size: 12px !important;
-        line-height: 1.2;
-        color: #000 !important;
-        background: #fff !important;
-    }
-
-    /* Yazıcı kenar boşluğu */
-    @page {
-        margin: 10mm;
-        size: A4 portrait;
-    }
-
-    /* Ekranda görünen ama yazdırılmaması gereken alanlar */
-    .no-print,
-    .cost-section,
-    .extra-images-section form {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0 !important;
-        overflow: hidden !important;
-    }
-
-    /* Kart kenar boşlukları */
-    .card {
-        box-shadow: none !important;
-        border: 1px solid #999 !important;
-        padding: 10px !important;
+    /* 🔹 Sayfanın taşmasını engelle */
+    html, body {
         margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        zoom: 0.75; /* %75 ölçekleme */
+    }
+
+    /* 🔹 Kart genişliğini tam sayfa yap */
+    .container, .card {
+        max-width: 100% !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        margin: 0 !important;
+        padding: 5mm !important;
+    }
+
+    /* 🔹 Font boyutlarını küçült */
+    body, .card, .container, table {
+        font-size: 9pt !important;
+        line-height: 1.2 !important;
     }
 
     h1, h2, h3, h4, h5, h6 {
-        margin: 4px 0 !important;
-        font-weight: 600 !important;
+        font-size: 11pt !important;
+        margin: 0 0 3px 0 !important;
     }
 
+    /* 🔹 Tablo ve görseller optimize */
     table {
         width: 100% !important;
         border-collapse: collapse !important;
-        font-size: 11px !important;
     }
 
     th, td {
-        padding: 4px 6px !important;
-        border: 1px solid #666 !important;
-        vertical-align: middle !important;
+        padding: 2px 5px !important;
     }
 
     img {
-        max-width: 100% !important;
+        max-width: 80mm !important;
         height: auto !important;
     }
 
-    /* QR Kod boyutu */
-    img[alt="QR Kod"] {
-        max-height: 80px !important;
-        margin-top: 5px !important;
-        margin-bottom: 5px !important;
+    /* 🔹 Boş sayfa oluşumunu engelle */
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
     }
 
-    /* İlk sayfa boş çıkmasını engelle */
-    body::before {
+    /* 🔹 Yazdır butonu, düzenle butonu ve benzeri gizlensin */
+    .no-print,
+    .btn-warning,
+    .extra-images-section,
+    .extra-images-section + form,
+    h5.fw-bold.mt-4 {
         display: none !important;
-        content: none !important;
-    }
-
-    .container {
-        width: 100% !important;
-        margin: 0 auto !important;
+        visibility: hidden !important;
     }
 }
 
@@ -131,6 +119,21 @@
 .extra-images-section * {
     pointer-events: auto !important;
 }
+
+/* 🧩 Görsel üzerindeki silme butonunu görünür ve öne getir */
+.extra-images-section form {
+    position: absolute !important;
+    top: 2px !important;
+    right: 2px !important;
+    z-index: 2000 !important;
+}
+
+.extra-images-section form button {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-block !important;
+}
+
     </style>
 </head>
 
