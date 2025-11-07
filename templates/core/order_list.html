@@ -316,26 +316,29 @@ function printLabel(qrUrl, siparisNo, tipi, musteri, urunKodu, renk, beden, must
 
 function deleteOrderInstant(button, orderId) {
     if (!confirm("Bu siparişi silmek istediğinize emin misiniz?")) return;
+
     const row = button.closest('tr');
-    const originalHTML = row.outerHTML;
-    row.remove();
+    row.style.opacity = "0.5";
+
     fetch(`/orders/${orderId}/delete/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
     })
-    .then(response => {
-        if (!response.ok) {
-            const tbody = document.querySelector('table tbody');
-            tbody.insertAdjacentHTML('beforeend', originalHTML);
-            alert('❌ Silme işlemi başarısız oldu');
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) {
+            setTimeout(() => location.reload(), 400); // ✅ Silindikten sonra sayfa yenilensin
+        } else {
+            row.style.opacity = "1";
         }
     })
-    .catch(err => {
-        const tbody = document.querySelector('table tbody');
-        tbody.insertAdjacentHTML('beforeend', originalHTML);
-        alert('⚠️ Sunucuya ulaşılamadı');
+    .catch(() => {
+        alert("⚠️ Sunucuya ulaşılamadı");
+        row.style.opacity = "1";
     });
 }
+
 
 document.addEventListener('DOMContentLoaded', function () {
     $('.selectpicker').selectpicker();

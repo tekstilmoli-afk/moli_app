@@ -22,6 +22,9 @@ from django.views.decorators.csrf import csrf_exempt
 
 from openpyxl import Workbook
 
+# 🗑️ Sipariş Silme (Cache-aware + AJAX uyumlu)
+from django.core.cache import cache
+
 # 📦 Proje modelleri ve formlar
 from .models import (
     Order,
@@ -532,16 +535,27 @@ def delete_order_event(request, event_id):
     return redirect("order_detail", pk=order_id)
 
 
-# 🗑️ Sipariş Silme
 @login_required
+@csrf_exempt
 def order_delete(request, pk):
-    if not request.user.is_staff:
-        return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
+    # 🛡️ Yetki kontrolü — sadece patron veya müdür silebilir
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return JsonResponse({"success": False, "message": "🚫 Bu işlemi yapma yetkiniz yok."}, status=403)
+
     if request.method == "POST":
-        order = get_object_or_404(Order, pk=pk)
-        order.delete()
-        return HttpResponse(status=204)
-    return HttpResponse(status=405)
+        try:
+            order = get_object_or_404(Order, pk=pk)
+            order.delete()
+
+            # 🧹 Cache temizle
+            cache.clear()
+
+            return JsonResponse({"success": True, "message": "✅ Sipariş başarıyla silindi."}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"success": False, "message": f"❌ Silme hatası: {str(e)}"}, status=500)
+
+    return JsonResponse({"success": False, "message": "❌ Geçersiz istek yöntemi."}, status=405)
 
 
 # 📊 GENEL ÜRETİM RAPORU
