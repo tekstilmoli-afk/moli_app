@@ -11,6 +11,7 @@ from supabase import create_client, Client
 
 User = get_user_model()
 
+
 # 👤 Kullanıcı Profili (Görev)
 class UserProfile(models.Model):
     GOREV_SECENEKLERI = [
@@ -169,12 +170,6 @@ class Order(models.Model):
         ekstra = self.ekstra_maliyet or 0
         return uygulanan + ekstra
 
-    @property
-    def kar_backend(self):
-        if self.satis_fiyati is None:
-            return None
-        return (self.satis_fiyati or 0) - self.toplam_maliyet
-
     def save(self, *args, **kwargs):
         creating = self._state.adding
 
@@ -201,15 +196,20 @@ class Order(models.Model):
             qr.make(fit=True)
             img = qr.make_image(fill_color="black", back_color="white")
 
+            from datetime import datetime
             buffer = BytesIO()
             img.save(buffer, format="PNG")
             buffer.seek(0)
-            filename = f"qr_{self.pk}.png"
 
-            # ✅ Supabase bağlantısını burada başlat
+            # 🔹 Benzersiz dosya ismi (örnek: qr_15_20251107_104512.png)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"qr_{self.pk}_{timestamp}.png"
+
             supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            bucket = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME)
 
-            response = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).upload(
+            # 🚀 Dosyayı yükle
+            response = bucket.upload(
                 path=filename,
                 file=buffer.getvalue(),
                 file_options={"content-type": "image/png"},
@@ -217,7 +217,7 @@ class Order(models.Model):
 
             error_attr = getattr(response, "error", None)
             if error_attr is None:
-                public_url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(filename)
+                public_url = bucket.get_public_url(filename)
                 self.qr_code_url = public_url
                 super().save(update_fields=["qr_code_url"])
             else:
@@ -233,29 +233,6 @@ class OrderImage(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-
-        if self.image and not self.image_url:
-            import os
-            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-            filename = f"extra_{self.pk}_{os.path.basename(self.image.name)}"
-
-            with self.image.open("rb") as file_data:
-                response = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).upload(
-                    path=filename,
-                    file=file_data.read(),
-                    file_options={"content-type": "image/jpeg"},
-                )
-
-            error_attr = getattr(response, "error", None)
-            if error_attr is None:
-                public_url = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).get_public_url(filename)
-                self.image_url = public_url
-                super().save(update_fields=["image_url"])
-            else:
-                print("⚠️ Supabase upload error:", error_attr)
-
-    def __str__(self):
-        return f"Görsel - {self.order.siparis_numarasi or self.order.id}"
 
 
 # 📜 ÜRETİM GEÇMİŞİ
