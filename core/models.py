@@ -9,11 +9,7 @@ import qrcode
 from io import BytesIO
 from supabase import create_client, Client
 
-# ✅ Supabase client başlat
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-
 User = get_user_model()
-
 
 # 👤 Kullanıcı Profili (Görev)
 class UserProfile(models.Model):
@@ -42,7 +38,6 @@ def create_profile_for_user(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=User)
 def save_profile_for_user(sender, instance, **kwargs):
-    # profil yoksa sessizce oluştur
     UserProfile.objects.get_or_create(user=instance)
 
 
@@ -94,14 +89,7 @@ class Order(models.Model):
     siparis_tipi = models.CharField(max_length=5, choices=SIPARIS_TIPLERI, null=True, blank=True, db_index=True)
     siparis_numarasi = models.CharField(max_length=20, unique=True, blank=True, db_index=True)
     musteri = models.ForeignKey('Musteri', on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
-
-    # 🧾 Müşteri tarafından verilen sipariş kodu veya adı
-    musteri_referans = models.CharField(
-        max_length=150,
-        blank=True,
-        null=True,
-        verbose_name="Müşteri Sipariş Referansı"
-    )
+    musteri_referans = models.CharField(max_length=150, blank=True, null=True, verbose_name="Müşteri Sipariş Referansı")
 
     siparis_tarihi = models.DateField(default=timezone.now, null=True, blank=True, db_index=True)
     urun_kodu = models.CharField(max_length=100, null=True, blank=True, db_index=True)
@@ -137,49 +125,30 @@ class Order(models.Model):
     hazir_durum = models.CharField(max_length=20, choices=DURUM_SECENEKLERI, default='bekliyor')
     sevkiyat_durum = models.CharField(
         max_length=20,
-        choices=[('bekliyor', 'Bekliyor'), ('hazirlaniyor', 'Hazırlanıyor'), ('gonderildi', 'Gönderildi')],
+        choices=[
+            ('bekliyor', 'Bekliyor'),
+            ('hazirlaniyor', 'Hazırlanıyor'),
+            ('gonderildi', 'Gönderildi')
+        ],
         default='bekliyor'
     )
 
     dikim_fason = models.BooleanField(default=False)
-    dikim_fasoncu = models.ForeignKey(
-        Fasoncu, on_delete=models.SET_NULL, null=True, blank=True, related_name='dikim_fasonlari'
-    )
-    dikim_fason_durumu = models.CharField(
-        max_length=20,
-        choices=[('verildi', 'Verildi'), ('alindi', 'Alındı')],
-        blank=True,
-        null=True
-    )
+    dikim_fasoncu = models.ForeignKey(Fasoncu, on_delete=models.SET_NULL, null=True, blank=True, related_name='dikim_fasonlari')
+    dikim_fason_durumu = models.CharField(max_length=20, choices=[('verildi', 'Verildi'), ('alindi', 'Alındı')], blank=True, null=True)
 
     susleme_fason = models.BooleanField(default=False)
-    susleme_fasoncu = models.ForeignKey(
-        Fasoncu, on_delete=models.SET_NULL, null=True, blank=True, related_name='susleme_fasonlari'
-    )
-    susleme_fason_durumu = models.CharField(
-        max_length=20,
-        choices=[('verildi', 'Verildi'), ('alindi', 'Alındı')],
-        blank=True,
-        null=True
-    )
+    susleme_fasoncu = models.ForeignKey(Fasoncu, on_delete=models.SET_NULL, null=True, blank=True, related_name='susleme_fasonlari')
+    susleme_fason_durumu = models.CharField(max_length=20, choices=[('verildi', 'Verildi'), ('alindi', 'Alındı')], blank=True, null=True)
 
-    nakisci = models.ForeignKey(
-        Nakisci, on_delete=models.SET_NULL, null=True, blank=True, related_name='nakis_siparisleri'
-    )
-    nakis_durumu = models.CharField(
-        max_length=20,
-        choices=[('yok', 'Yok'), ('verildi', 'Nakışa Verildi'), ('alindi', 'Nakıştan Alındı')],
-        default='yok'
-    )
+    nakisci = models.ForeignKey(Nakisci, on_delete=models.SET_NULL, null=True, blank=True, related_name='nakis_siparisleri')
+    nakis_durumu = models.CharField(max_length=20, choices=[('yok', 'Yok'), ('verildi', 'Nakışa Verildi'), ('alindi', 'Nakıştan Alındı')], default='yok')
 
-    # 💰 Satış – Maliyet Bilgileri
     satis_fiyati = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     para_birimi = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="TRY")
-
     maliyet_uygulanan = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     maliyet_para_birimi = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="TRY")
     maliyet_override = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
-
     ekstra_maliyet = models.DecimalField(max_digits=12, decimal_places=2, default=0)
 
     @property
@@ -196,11 +165,7 @@ class Order(models.Model):
 
     @property
     def toplam_maliyet(self):
-        uygulanan = (
-            self.maliyet_override
-            if self.maliyet_override is not None
-            else self.maliyet_uygulanan or 0
-        )
+        uygulanan = self.maliyet_override if self.maliyet_override is not None else self.maliyet_uygulanan or 0
         ekstra = self.ekstra_maliyet or 0
         return uygulanan + ekstra
 
@@ -210,27 +175,23 @@ class Order(models.Model):
             return None
         return (self.satis_fiyati or 0) - self.toplam_maliyet
 
-    # ✅ Güvenli Save (sadece ilk oluşturulmada QR kod üretir)
     def save(self, *args, **kwargs):
-        creating = self._state.adding  # Yeni kayıt mı?
+        creating = self._state.adding
 
-        if creating and not self.siparis_numarasi and self.siparis_tipi:
-            prefix = "ÖZEL" if self.siparis_tipi == "ÖZEL" else "SERI"
+        if creating and not self.siparis_numarasi:
+            prefix = self.siparis_tipi or "SP"
             last_order = Order.objects.filter(siparis_tipi=self.siparis_tipi).order_by("id").last()
             if last_order and last_order.siparis_numarasi:
                 try:
-                    num = int(last_order.siparis_numarasi.replace(prefix, "")) + 1
+                    num = int(''.join(filter(str.isdigit, last_order.siparis_numarasi))) + 1
                 except ValueError:
                     num = 1
             else:
                 num = 1
             self.siparis_numarasi = f"{prefix}{num:04d}"
 
-        # Normal kaydı yap
         super().save(*args, **kwargs)
 
-
-        # ✅ QR kodu sadece ilk oluşturulduğunda üret
         if creating and not self.qr_code_url:
             base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
             detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
@@ -244,6 +205,9 @@ class Order(models.Model):
             img.save(buffer, format="PNG")
             buffer.seek(0)
             filename = f"qr_{self.pk}.png"
+
+            # ✅ Supabase bağlantısını burada başlat
+            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
 
             response = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME).upload(
                 path=filename,
@@ -259,24 +223,19 @@ class Order(models.Model):
             else:
                 print("⚠️ Supabase upload error:", error_attr)
 
-    def __str__(self):
-        return f"{self.siparis_numarasi or 'NO_NUM'} - {self.musteri or 'Müşteri Yok'}"
 
+# 🖼️ Ek Görseller (Supabase Upload)
 class OrderImage(models.Model):
     order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='extra_images')
-    image = models.ImageField(upload_to='temp_uploads/', blank=True, null=True)  # geçici yerel kayıt
+    image = models.ImageField(upload_to='temp_uploads/', blank=True, null=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    image_url = models.URLField(blank=True, null=True)  # Supabase linki
+    image_url = models.URLField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        # Yeni kayıt oluşturulurken görsel Supabase'e yüklenir
-        super().save(*args, **kwargs)  # önce yerel dosyayı kaydedelim
+        super().save(*args, **kwargs)
 
         if self.image and not self.image_url:
-            from django.conf import settings
-            from supabase import create_client
             import os
-
             supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
             filename = f"extra_{self.pk}_{os.path.basename(self.image.name)}"
 
@@ -299,8 +258,6 @@ class OrderImage(models.Model):
         return f"Görsel - {self.order.siparis_numarasi or self.order.id}"
 
 
-
-
 # 📜 ÜRETİM GEÇMİŞİ
 class OrderEvent(models.Model):
     GOREV_SECENEKLERI = UserProfile.GOREV_SECENEKLERI
@@ -314,20 +271,8 @@ class OrderEvent(models.Model):
     parca = models.CharField(max_length=100, blank=True, null=True)
     aciklama = models.TextField(blank=True, null=True)
     ortak_calisanlar = models.CharField(max_length=255, blank=True, null=True)
-    fasoncu = models.ForeignKey(
-        Fasoncu,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="event_fasonlari"
-    )
-    nakisci = models.ForeignKey(
-        Nakisci,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="event_nakisleri"
-    )
+    fasoncu = models.ForeignKey(Fasoncu, on_delete=models.SET_NULL, null=True, blank=True, related_name="event_fasonlari")
+    nakisci = models.ForeignKey(Nakisci, on_delete=models.SET_NULL, null=True, blank=True, related_name="event_nakisleri")
     timestamp = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
