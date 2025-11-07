@@ -591,12 +591,13 @@ def giden_urunler_raporu(request):
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu raporu görme yetkiniz yok.")
 
-    # ✅ Artık gitti_mi yerine sevkiyat_durum kullanıyoruz
-    orders = (
-        Order.objects.filter(sevkiyat_durum="gonderildi")
-        .select_related("musteri")
-        .order_by("-id")
-    )
+    orders = list(
+    Order.objects
+    .filter(sevkiyat_durum="gonderildi")
+    .select_related("musteri")
+    .order_by("-id")
+)
+
 
     # Toplam kar hesaplama
     toplam_kar = sum([o.kar or 0 for o in orders if o.kar is not None])
@@ -917,39 +918,35 @@ def ai_assistant_view(request):
     return render(request, "core/asistan.html")
 
 
-# 🤖 Gemini REST API tabanlı Asistan
 @csrf_exempt
 def ai_assistant_api(request):
     if request.method == "POST":
         try:
-            # 🔹 Kullanıcı mesajını al
+            import requests, os, json
             data = json.loads(request.body)
             user_message = data.get("message", "").strip()
+
             if not user_message:
                 return JsonResponse({"reply": "❗Lütfen bir mesaj yazın."})
 
-            # 🔑 API anahtarı al
             GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", None)
             if not GEMINI_API_KEY:
                 return JsonResponse({"reply": "🔧 Asistan çevrimdışı (API anahtarı eksik)."})
 
-            # ✅ Doğru endpoint (v1)
-            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+            # ✅ Güncel model ve doğru endpoint
+            MODEL = "gemini-2.5-flash"  # istersen gemini-2.5-pro ile değiştir
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent?key={GEMINI_API_KEY}"
 
-            # 📨 İstek içeriği
             payload = {
                 "contents": [
                     {"parts": [{"text": user_message}]}
                 ]
             }
-
             headers = {"Content-Type": "application/json"}
 
-            # 🌐 API isteği gönder
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
             result = response.json()
 
-            # 🧠 Yanıtı parse et
             if "candidates" in result and len(result["candidates"]) > 0:
                 reply = result["candidates"][0]["content"]["parts"][0]["text"]
             elif "error" in result:
@@ -961,3 +958,6 @@ def ai_assistant_api(request):
             reply = f"⚠️ Bir hata oluştu: {str(e)}"
 
         return JsonResponse({"reply": reply})
+
+    # GET isteklerine basit bir yanıt dön
+    return JsonResponse({"reply": "Bu endpoint sadece POST isteklerini kabul eder."})

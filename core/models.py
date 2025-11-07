@@ -223,6 +223,28 @@ class Order(models.Model):
             else:
                 print("⚠️ Supabase upload error:", error_attr)
 
+    @property
+    def son_durum(self):
+        """Siparişin genel durumunu (özetini) döner."""
+        # Sevkiyat bittiyse en üst öncelikli durum
+        if self.sevkiyat_durum == "gonderildi":
+            return "Sevkiyat Tamamlandı ✅"
+        # Hazır bittiyse
+        elif self.hazir_durum == "bitti":
+            return "Hazırlık Tamamlandı"
+        # Süsleme bittiyse
+        elif self.susleme_durum == "bitti":
+            return "Süsleme Tamamlandı"
+        # Dikim bittiyse
+        elif self.dikim_durum == "bitti":
+            return "Dikim Tamamlandı"
+        # Kesim bittiyse
+        elif self.kesim_durum == "bitti":
+            return "Kesim Tamamlandı"
+        # Hiçbiri bitmemişse
+        else:
+            return "Bekliyor ⏳"
+
 
 # 🖼️ Ek Görseller (Supabase Upload)
 class OrderImage(models.Model):
