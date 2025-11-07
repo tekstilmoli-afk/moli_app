@@ -263,7 +263,12 @@ def order_create(request):
                     order.maliyet_uygulanan = None
 
             order.save()
-            return redirect("order_list")
+
+            # ✅ Cache temizle ve tarayıcı önbelleğini aş
+            from django.core.cache import cache
+            cache.clear()
+            return redirect(f"{reverse('order_list')}?t={int(time.time())}")
+
     else:
         form = OrderForm(user=request.user)
 

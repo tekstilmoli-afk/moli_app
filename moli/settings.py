@@ -4,16 +4,19 @@ Django settings for moli project (optimized for PostgreSQL + Render).
 
 from pathlib import Path
 import os
-import dj_database_url
 from dotenv import load_dotenv
-import os
-
-
-# 📌 .env dosyasını yükle
-load_dotenv()
+import dj_database_url
 
 # 📌 Ana dizin yolu
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# 📌 .env dosyasını manuel olarak BASE_DIR'den yükle
+dotenv_path = BASE_DIR / '.env'
+if dotenv_path.exists():
+    load_dotenv(dotenv_path=dotenv_path)
+    print(f"✅ .env yüklendi: {dotenv_path}")
+else:
+    print(f"⚠️ .env bulunamadı: {dotenv_path}")
 
 # ⚙️ Güvenlik
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-placeholder')
@@ -66,17 +69,27 @@ TEMPLATES = [
     },
 ]
 
-# 🗃️ PostgreSQL — ⚙️ Optimize edilmiş bağlantı ayarları
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv(
-            'DATABASE_URL',
-            'postgresql://postgres:xUPplVVDFeKUSjnfTgtxIvvrZAWnMSaq@switchyard.proxy.rlwy.net:23849/railway'
-        ),
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
+    print("✅ Render veritabanına bağlanılıyor...")
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+else:
+    print("⚠️ DATABASE_URL bulunamadı, Railway fallback devreye girdi!")
+    DATABASES = {
+        'default': dj_database_url.parse(
+            'postgresql://postgres:xUPplVVDFeKUSjnfTgtxIvvrZAWnMSaq@switchyard.proxy.rlwy.net:23849/railway',
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+
 
 # ⚡ PostgreSQL performans seçenekleri
 DATABASES['default']['OPTIONS'] = {
@@ -158,7 +171,6 @@ SUPABASE_BUCKET_NAME = os.getenv('SUPABASE_BUCKET_NAME', 'qr-codes')
 
 BASE_URL = os.getenv('BASE_URL', 'https://moli-app.onrender.com')
 
-load_dotenv()  # sadece bir kez çağırmamız yeterli
 
 # 🔑 Gemini API anahtarı
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
