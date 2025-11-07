@@ -203,40 +203,148 @@
         </div>
         {% endif %}
 
-        <hr>
         <h5 class="fw-bold mt-4">📸 Ek Sipariş Görselleri</h5>
 
-        <div class="d-flex flex-wrap justify-content-center mb-3 extra-images-section">
-            {% for img in order.extra_images.all %}
-            <div class="position-relative d-inline-block m-2">
-                <a href="{{ img.image_url }}" target="_blank" rel="noopener noreferrer">
-                    <img src="{{ img.image_url }}" alt="Ek Görsel" class="img-thumbnail shadow-sm" style="max-height:180px; border-radius:8px;">
-                </a>
-
-                {% if is_manager %}
-                <form action="{% url 'delete_order_image' img.id %}" method="POST"
-                      class="position-absolute top-0 end-0 m-1 no-print"
-                      onsubmit="return confirm('Bu görseli silmek istediğine emin misin?');">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-danger py-0 px-1"
-                            style="font-size: 0.7rem; line-height: 1; opacity: 0.8;">
-                        ✕
-                    </button>
-                </form>
-                {% endif %}
-            </div>
-            {% empty %}
-            <p class="text-muted">Henüz ek görsel yok.</p>
-            {% endfor %}
-        </div>
+<div class="d-flex flex-wrap justify-content-center mb-3 extra-images-section">
+    {% for img in order.extra_images.all %}
+    <div class="position-relative d-inline-block m-2">
+        <!-- 🔍 Tıklanabilir görsel -->
+        <img src="{{ img.image_url }}" alt="Ek Görsel"
+             class="img-thumbnail shadow-sm preview-img"
+             style="max-height:180px; border-radius:8px; cursor: zoom-in;">
 
         {% if is_manager %}
-        <form action="{% url 'order_add_image' order.id %}" method="POST" enctype="multipart/form-data" class="no-print mt-3">
+        <form action="{% url 'delete_order_image' img.id %}" method="POST"
+              class="position-absolute top-0 end-0 m-1 no-print"
+              onsubmit="return confirm('Bu görseli silmek istediğine emin misin?');">
             {% csrf_token %}
-            <input type="file" name="images" accept="image/*" multiple required>
-            <button type="submit" class="btn btn-outline-secondary btn-sm">📤 Çoklu Görsel Yükle</button>
+            <button type="submit" class="btn btn-sm btn-danger py-0 px-1"
+                    style="font-size: 0.7rem; line-height: 1; opacity: 0.8;">
+                ✕
+            </button>
         </form>
         {% endif %}
+    </div>
+    {% empty %}
+    <p class="text-muted">Henüz ek görsel yok.</p>
+    {% endfor %}
+</div>
+
+{% if is_manager %}
+<form action="{% url 'order_add_image' order.id %}" method="POST"
+      enctype="multipart/form-data" class="no-print mt-3">
+    {% csrf_token %}
+    <input type="file" name="images" accept="image/*" multiple required>
+    <button type="submit" class="btn btn-outline-secondary btn-sm">📤 Çoklu Görsel Yükle</button>
+</form>
+{% endif %}
+
+<!-- 🔍 Gelişmiş Görsel Önizleme -->
+<style>
+#lightboxOverlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+#lightboxOverlay img {
+  display: block;
+  max-width: none;
+  max-height: none;
+  width: 60vw;              /* 🔹 Görsel ekranın %60’ı kadar */
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+  transition: transform 0.25s ease-in-out;
+  transform: scale(1.05);   /* 🔹 Küçük ve doğal başlangıç */
+}
+
+#lightboxOverlay img:hover {
+  transform: scale(1.15);   /* 🔹 Hafif hover büyümesi */
+}
+
+/* 📱 Mobil için optimize */
+@media (max-width: 768px) {
+  #lightboxOverlay img {
+    width: 90vw;            /* 🔹 Mobilde biraz daha büyük */
+    transform: none;
+  }
+}
+
+
+
+
+
+
+
+
+#lightboxPrev, #lightboxNext {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  color: white;
+  background: rgba(0,0,0,0.4);
+  border: none;
+  padding: 8px 14px;
+  border-radius: 50%;
+  cursor: pointer;
+  user-select: none;
+}
+#lightboxPrev:hover, #lightboxNext:hover { background: rgba(255,255,255,0.3); }
+#lightboxPrev { left: 30px; }
+#lightboxNext { right: 30px; }
+@media print { #lightboxOverlay { display: none !important; } }
+</style>
+
+<div id="lightboxOverlay">
+  <button id="lightboxPrev">⟨</button>
+  <img id="lightboxImage" src="">
+  <button id="lightboxNext">⟩</button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const imgs = Array.from(document.querySelectorAll('.preview-img'));
+  const overlay = document.getElementById('lightboxOverlay');
+  const overlayImg = document.getElementById('lightboxImage');
+  const prevBtn = document.getElementById('lightboxPrev');
+  const nextBtn = document.getElementById('lightboxNext');
+  let currentIndex = -1;
+
+  function showImage(index) {
+    if (index < 0 || index >= imgs.length) return;
+    overlayImg.src = imgs[index].src;
+    overlay.style.display = 'flex';
+    currentIndex = index;
+  }
+
+  imgs.forEach((img, i) => {
+    img.addEventListener('click', () => showImage(i));
+  });
+
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) overlay.style.display = 'none';
+  });
+
+  document.addEventListener('keydown', e => {
+    if (overlay.style.display === 'flex') {
+      if (e.key === 'Escape') overlay.style.display = 'none';
+      else if (e.key === 'ArrowRight') showImage((currentIndex + 1) % imgs.length);
+      else if (e.key === 'ArrowLeft') showImage((currentIndex - 1 + imgs.length) % imgs.length);
+    }
+  });
+
+  prevBtn.addEventListener('click', () => showImage((currentIndex - 1 + imgs.length) % imgs.length));
+  nextBtn.addEventListener('click', () => showImage((currentIndex + 1) % imgs.length));
+});
+</script>
+
+
 
         <!-- 💰 Maliyet & Kâr Bilgileri -->
         {% if is_manager %}
@@ -316,7 +424,24 @@
     </div>
 </div>
 
+<!-- 🖨️ Görsel Yazdır Butonu (tam buraya ekle) -->
+<button id="printImageBtn" class="btn btn-light btn-sm no-print" style="
+  position: fixed;
+  bottom: 30px;
+  right: 50%;
+  transform: translateX(50%);
+  z-index: 99999;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  border-radius: 6px;
+  font-weight: 500;
+  display: none;
+">
+  🖨️ Yazdır
+</button>
+
+<!-- 🔽 script'ler bundan sonra geliyor -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 <script>
 function adetKaydet(checkbox, stage) {
     if (!checkbox.checked) return;
@@ -330,6 +455,39 @@ function adetKaydet(checkbox, stage) {
         }
     });
 }
+
+// 🖨️ Yazdırma script'i buraya:
+document.addEventListener('click', function(e) {
+  const overlay = document.getElementById('lightboxOverlay');
+  const printBtn = document.getElementById('printImageBtn');
+
+  if (overlay && overlay.style.display === 'flex') {
+    printBtn.style.display = 'block';
+  } else {
+    printBtn.style.display = 'none';
+  }
+
+  if (e.target === overlay) {
+    printBtn.style.display = 'none';
+  }
+});
+
+document.getElementById('printImageBtn').addEventListener('click', function() {
+  const img = document.querySelector('#lightboxOverlay img');
+  if (!img) return;
+
+  const w = window.open('', '_blank');
+  w.document.write(`
+    <html>
+      <head><title>Görsel Yazdır</title></head>
+      <body style="margin:0; display:flex; justify-content:center; align-items:center; height:100vh;">
+        <img src="${img.src}" style="max-width:100%; max-height:100%;">
+        <script>window.print();<\/script>
+      </body>
+    </html>
+  `);
+  w.document.close();
+});
 </script>
 
 </body>

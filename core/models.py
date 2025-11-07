@@ -246,7 +246,6 @@ class Order(models.Model):
             return "Bekliyor ⏳"
 
 
-# 🖼️ Ek Görseller (Supabase Upload)
 class OrderImage(models.Model):
     order = models.ForeignKey('Order', on_delete=models.CASCADE, related_name='extra_images')
     image = models.ImageField(upload_to='temp_uploads/', blank=True, null=True)
@@ -255,6 +254,47 @@ class OrderImage(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+        # Eğer image_url boşsa Supabase'e yükle
+        if self.image and not self.image_url:
+            try:
+                # Dosyayı güvenli şekilde aç
+                with open(self.image.path, "rb") as file_obj:
+                    public_url = upload_to_supabase(file_obj)
+
+                # Eğer başarılıysa image_url alanına kaydet
+                if public_url:
+                    self.image_url = public_url
+                    super().save(update_fields=['image_url'])
+
+            except Exception as e:
+                print(f"⚠️ Supabase upload hatası: {e}")
+
+
+
+import requests
+import os
+
+def upload_to_supabase(file_obj):
+    SUPABASE_URL = os.getenv('SUPABASE_URL')
+    SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
+    SUPABASE_BUCKET = os.getenv('SUPABASE_BUCKET_NAME', 'qr-codes')
+
+    file_name = os.path.basename(file_obj.name)
+    upload_url = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_BUCKET}/{file_name}"
+
+    headers = {
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+        "Content-Type": "application/octet-stream"
+    }
+
+    response = requests.post(upload_url, headers=headers, data=file_obj.read())
+    if response.status_code in (200, 201):
+        return f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{file_name}"
+    else:
+        print("Supabase upload failed:", response.text)
+        return None
 
 
 # 📜 ÜRETİM GEÇMİŞİ
