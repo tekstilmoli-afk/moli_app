@@ -8,6 +8,8 @@ from django.dispatch import receiver
 import qrcode
 from io import BytesIO
 from supabase import create_client, Client
+from core.utils import upload_to_supabase
+
 
 User = get_user_model()
 

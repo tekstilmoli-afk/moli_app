@@ -208,10 +208,17 @@
 <div class="d-flex flex-wrap justify-content-center mb-3 extra-images-section">
     {% for img in order.extra_images.all %}
     <div class="position-relative d-inline-block m-2">
-        <!-- 🔍 Tıklanabilir görsel -->
-        <img src="{{ img.image_url }}" alt="Ek Görsel"
-             class="img-thumbnail shadow-sm preview-img"
-             style="max-height:180px; border-radius:8px; cursor: zoom-in;">
+        {% if img.image_url %}
+            <!-- 🔍 Tıklanabilir görsel -->
+            <img src="{{ img.image_url }}" 
+                 alt="Ek Görsel"
+                 class="img-thumbnail shadow-sm preview-img"
+                 style="max-height:180px; border-radius:8px; cursor: zoom-in;">
+        {% else %}
+            <div class="text-center border rounded p-2 bg-light text-muted" style="width:180px; height:120px;">
+                ⚠️ Görsel bağlantısı yok
+            </div>
+        {% endif %}
 
         {% if is_manager %}
         <form action="{% url 'delete_order_image' img.id %}" method="POST"
@@ -231,13 +238,20 @@
 </div>
 
 {% if is_manager %}
-<form action="{% url 'order_add_image' order.id %}" method="POST"
-      enctype="multipart/form-data" class="no-print mt-3">
+<form 
+  action="{% url 'order_add_image' order.pk %}" 
+  method="POST" 
+  enctype="multipart/form-data" 
+  class="no-print mt-3">
     {% csrf_token %}
     <input type="file" name="images" accept="image/*" multiple required>
-    <button type="submit" class="btn btn-outline-secondary btn-sm">📤 Çoklu Görsel Yükle</button>
+    <button type="submit" class="btn btn-outline-secondary btn-sm">
+        📤 Çoklu Görsel Yükle
+    </button>
 </form>
 {% endif %}
+
+
 
 <!-- 🔍 Gelişmiş Görsel Önizleme -->
 <style>
