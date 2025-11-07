@@ -6,6 +6,9 @@ from pathlib import Path
 import os
 import dj_database_url
 from dotenv import load_dotenv
+from dotenv import load_dotenv
+import os
+
 
 # 📌 .env dosyasını yükle
 load_dotenv()
@@ -155,3 +158,8 @@ SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 SUPABASE_BUCKET_NAME = os.getenv('SUPABASE_BUCKET_NAME', 'qr-codes')
 
 BASE_URL = os.getenv('BASE_URL', 'https://moli-app.onrender.com')
+
+load_dotenv()  # sadece bir kez çağırmamız yeterli
+
+# 🔑 Gemini API anahtarı
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

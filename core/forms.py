@@ -48,6 +48,10 @@ class OrderForm(forms.ModelForm):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
+        # 🧾 Müşteri listesini her seferinde dinamik olarak güncelle
+        from .models import Musteri
+        self.fields["musteri"].queryset = Musteri.objects.order_by("ad")
+
         # 🧍 Kullanıcıyı form içinde sakla (save'te erişebilmek için)
         self.user = user
 
@@ -68,6 +72,9 @@ class OrderForm(forms.ModelForm):
             for field in hidden_fields:
                 if field in self.fields:
                     self.fields[field].widget = forms.HiddenInput()
+
+
+
 
     def save(self, commit=True):
         instance = super().save(commit=False)

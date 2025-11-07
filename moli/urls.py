@@ -6,7 +6,6 @@ from core import views
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 
-
 # 👇 GET isteğini de destekleyen logout fonksiyonu
 def logout_view(request):
     logout(request)
@@ -67,6 +66,10 @@ urlpatterns = [
 
     # 🧵 Üretim geçmişi silme (YENİ)
     path("events/<int:event_id>/delete/", views.delete_order_event, name="delete_order_event"),
+
+    path("asistan/", views.ai_assistant_view, name="ai_assistant"),
+
+    path("api/assistant/", views.ai_assistant_api, name="ai_assistant_api"),
 ]
 
 

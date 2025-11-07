@@ -1,27 +1,45 @@
+import os
 import time
-from django.urls import reverse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q, Max, Count
-from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
-from django.core.paginator import Paginator
-from django.template.loader import render_to_string
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth import authenticate, login, get_user_model
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from openpyxl import Workbook
-from django.db.models import Sum, F, ExpressionWrapper, FloatField
-from django.db.models import Subquery, OuterRef
-from django.db.models.functions import Coalesce
-from django.contrib import messages
-from django.shortcuts import redirect, get_object_or_404
-from django.contrib.auth.models import User
+import json
+import requests
 from datetime import datetime, timedelta
-from django.views.decorators.cache import never_cache
 
-from .models import Order, Musteri, Nakisci, Fasoncu, OrderEvent, UserProfile, ProductCost, OrderImage
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.core.paginator import Paginator
+from django.db.models import Q, Max, Count, Sum, F, ExpressionWrapper, FloatField, Subquery, OuterRef
+from django.db.models.functions import Coalesce
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
+from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
+
+from openpyxl import Workbook
+
+# 📦 Proje modelleri ve formlar
+from .models import (
+    Order,
+    Musteri,
+    Nakisci,
+    Fasoncu,
+    OrderEvent,
+    UserProfile,
+    ProductCost,
+    OrderImage
+)
 from .forms import OrderForm, MusteriForm
-from .models import OrderImage
+
+# 🧠 Google Gemini AI REST (artık sadece requests ile çağrılıyor)
+# NOT: google.generativeai modülü kaldırıldı (v1 API ile çakıştığı için)
+
+
+
 
 
 # 🧠 Ortak filtreleme fonksiyonu
@@ -893,3 +911,53 @@ def reports_home(request):
     # reports/reports_home.html şablonunu render et
     return render(request, "reports/reports_home.html")
 
+# 💬 Asistan sayfası (HTML)
+@login_required
+def ai_assistant_view(request):
+    return render(request, "core/asistan.html")
+
+
+# 🤖 Gemini REST API tabanlı Asistan
+@csrf_exempt
+def ai_assistant_api(request):
+    if request.method == "POST":
+        try:
+            # 🔹 Kullanıcı mesajını al
+            data = json.loads(request.body)
+            user_message = data.get("message", "").strip()
+            if not user_message:
+                return JsonResponse({"reply": "❗Lütfen bir mesaj yazın."})
+
+            # 🔑 API anahtarı al
+            GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or getattr(settings, "GEMINI_API_KEY", None)
+            if not GEMINI_API_KEY:
+                return JsonResponse({"reply": "🔧 Asistan çevrimdışı (API anahtarı eksik)."})
+
+            # ✅ Doğru endpoint (v1)
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+
+            # 📨 İstek içeriği
+            payload = {
+                "contents": [
+                    {"parts": [{"text": user_message}]}
+                ]
+            }
+
+            headers = {"Content-Type": "application/json"}
+
+            # 🌐 API isteği gönder
+            response = requests.post(url, headers=headers, json=payload)
+            result = response.json()
+
+            # 🧠 Yanıtı parse et
+            if "candidates" in result and len(result["candidates"]) > 0:
+                reply = result["candidates"][0]["content"]["parts"][0]["text"]
+            elif "error" in result:
+                reply = f"⚠️ API Hatası: {result['error'].get('message', 'Bilinmeyen hata')}"
+            else:
+                reply = f"⚠️ Beklenmeyen yanıt: {result}"
+
+        except Exception as e:
+            reply = f"⚠️ Bir hata oluştu: {str(e)}"
+
+        return JsonResponse({"reply": reply})
