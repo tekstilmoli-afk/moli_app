@@ -4,6 +4,7 @@ import json
 import requests
 from datetime import datetime, timedelta
 
+from django.db import connections
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -19,6 +20,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
+
+
 
 from openpyxl import Workbook
 
@@ -91,10 +94,23 @@ def view_image(request, image_id):
     return render(request, "core/view_image.html", {"image": image})
 
 
-# 📋 Sipariş Listeleme (Son Durum düzeltildi)
+# 📋 Sipariş Listeleme (Son Durum Gecikmesi Giderildi)
+from django.db.models import OuterRef, Subquery, Q, Value, CharField
+from django.core.paginator import Paginator
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
+from django.shortcuts import render
+from core.models import Order, OrderEvent
+
+
+from django.db import close_old_connections  # ⬅️ En üste import ekle
+
+@never_cache
 @login_required
 def order_list(request):
-    from django.db.models import OuterRef, Subquery, Q
+    close_old_connections()  # ✅ Eski bağlantıları güvenli şekilde kapat
+    # 🔧 Her sorgudan önce bağlantıyı sıfırla (cache kalmasın)
+    connections["default"].close()
 
     # ✅ Türkçe açıklamalı durum sözlüğü
     STAGE_TRANSLATIONS = {
@@ -116,34 +132,27 @@ def order_list(request):
         ("sevkiyat_durum", "gonderildi"): "Sevkiyat Gönderildi",
     }
 
-    # ✅ Her siparişin son event’ini tek sorguda al
+    # ✅ Her siparişin son event’ini tek sorguda al (timestamp + id sıralaması)
     latest_event = (
-        OrderEvent.objects.filter(order=OuterRef("pk"))
-        .order_by("-timestamp")
+        OrderEvent.objects
+        .filter(order=OuterRef("pk"))
+        .order_by("-timestamp", "-id")
         .values("stage", "value")[:1]
     )
 
-    # ✅ Ana sorgu (performanslı)
+    # ✅ Ana sorgu
     qs = (
         Order.objects.select_related("musteri")
         .only(
-            "id",
-            "siparis_numarasi",
-            "siparis_tipi",
-            "urun_kodu",
-            "renk",
-            "beden",
-            "adet",
-            "siparis_tarihi",
-            "teslim_tarihi",
-            "aciklama",
-            "musteri__ad",
-            "qr_code_url",
+            "id", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk",
+            "beden", "adet", "siparis_tarihi", "teslim_tarihi",
+            "aciklama", "musteri__ad", "qr_code_url"
         )
         .annotate(
             latest_stage=Subquery(latest_event.values("stage")),
             latest_value=Subquery(latest_event.values("value")),
         )
+        .order_by("-id")
     )
 
     # ✅ Filtreler
@@ -165,7 +174,6 @@ def order_list(request):
     if bedenler:
         qs = qs.filter(beden__in=bedenler)
 
-    # ✅ Durum filtresi (stage/value eşleştirmesiyle)
     if status_filter:
         stage_value_pairs = [
             key for key, val in STAGE_TRANSLATIONS.items() if val in status_filter
@@ -175,7 +183,6 @@ def order_list(request):
             query |= Q(latest_stage=stage, latest_value=value)
         qs = qs.filter(query)
 
-    # ✅ Teslim Tarihi Aralığı
     teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
     teslim_bitis = request.GET.get("teslim_tarihi_bitis")
     if teslim_baslangic and teslim_bitis:
@@ -185,17 +192,11 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
-    # ✅ Ek arama filtreleri (ortak fonksiyon)
-    qs = apply_filters(request, qs)
-
-    if not qs.query.order_by:
-        qs = qs.order_by("-id")
-
+    # ✅ Sayfalama
     paginator = Paginator(qs, 50)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
+    page_obj = paginator.get_page(request.GET.get("page"))
 
-    # ✅ Son durumun okunabilir formatta hazırlanması
+    # ✅ Okunabilir son durum
     for order in page_obj:
         if order.latest_stage and order.latest_value:
             order.formatted_status = STAGE_TRANSLATIONS.get(
@@ -205,12 +206,12 @@ def order_list(request):
         else:
             order.formatted_status = "-"
 
-    # ✅ Modal filtre seçenekleri
-    siparis_options = Order.objects.order_by().values_list("siparis_numarasi", flat=True).distinct()
-    musteri_options = Order.objects.order_by().values_list("musteri__ad", flat=True).distinct()
-    urun_options = Order.objects.order_by().values_list("urun_kodu", flat=True).distinct()
-    renk_options = Order.objects.order_by().values_list("renk", flat=True).distinct()
-    beden_options = Order.objects.order_by().values_list("beden", flat=True).distinct()
+    # ✅ Filtre seçenekleri
+    siparis_options = Order.objects.values_list("siparis_numarasi", flat=True).distinct()
+    musteri_options = Order.objects.values_list("musteri__ad", flat=True).distinct()
+    urun_options = Order.objects.values_list("urun_kodu", flat=True).distinct()
+    renk_options = Order.objects.values_list("renk", flat=True).distinct()
+    beden_options = Order.objects.values_list("beden", flat=True).distinct()
     status_options = list(set(STAGE_TRANSLATIONS.values()))
 
     context = {
@@ -220,6 +221,8 @@ def order_list(request):
         "urun_options": urun_options,
         "renk_options": renk_options,
         "beden_options": beden_options,
+        "status_options": status_options,
+        "status_selected": status_filter,
         "siparis_no_selected": siparis_nolar,
         "musteri_selected": musteriler,
         "urun_kodu_selected": urun_kodlari,
@@ -227,20 +230,13 @@ def order_list(request):
         "beden_selected": bedenler,
         "teslim_baslangic_selected": teslim_baslangic,
         "teslim_bitis_selected": teslim_bitis,
-        "status_options": status_options,
-        "status_selected": status_filter,
     }
 
-    return render(request, "core/order_list.html", context)
-
-
-
-
-
-
-
-
-
+    response = render(request, "core/order_list.html", context)
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
 
 
 # ➕ Yeni Sipariş
