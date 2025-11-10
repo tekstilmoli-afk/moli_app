@@ -71,16 +71,25 @@ class Musteri(models.Model):
 
 class Nakisci(models.Model):
     ad = models.CharField(max_length=100)
+    telefon = models.CharField(max_length=20, blank=True, null=True)
+    notlar = models.TextField(blank=True, null=True)
+    eklenme_tarihi = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.ad
+
 
 
 class Fasoncu(models.Model):
     ad = models.CharField(max_length=100)
+    telefon = models.CharField(max_length=20, blank=True, null=True)
+    notlar = models.TextField(blank=True, null=True)
+    eklenme_tarihi = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.ad
+
+
 
 
 class Order(models.Model):

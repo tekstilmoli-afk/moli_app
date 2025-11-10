@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Ürün Maliyet Listesi</h3>
+<table class="table table-sm table-striped">
+    <thead>
+        <tr>
+            <th>Ürün Kodu</th>
+            <th>Maliyet</th>
+            <th>Para Birimi</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in costs %}
+        <tr>
+            <td>{{ c.urun_kodu }}</td>
+            <td>{{ c.maliyet|floatformat:2 }}</td>
+            <td>{{ c.para_birimi }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="text-center text-muted">Kayıt bulunamadı</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

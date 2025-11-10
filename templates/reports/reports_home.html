@@ -6,56 +6,145 @@
     <title>📊 Raporlar Merkezi</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
     <style>
-        body { background-color: #f8f9fa; padding: 30px; }
-        .card { border-radius: 12px; transition: all 0.2s ease; }
-        .card:hover { transform: translateY(-4px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { font-size: 26px; font-weight: 600; margin-bottom: 30px; }
+        body {
+            background-color: #f8f9fa;
+            padding: 30px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        h1 {
+            font-size: 26px;
+            font-weight: 600;
+            color: #0d6efd;
+        }
+
+        .card {
+            border-radius: 12px;
+            border: 1px solid #d0e2ff;
+            transition: all 0.25s ease;
+            background: #fff;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+        }
+
+        .card i {
+            color: #0d6efd;
+        }
+
+        .card-title {
+            color: #0d6efd;
+            font-weight: 600;
+        }
+
+        /* ✨ Ortak buton stili */
+        .btn-outline-primary {
+            color: #0d6efd;
+            border: 1.5px solid #0d6efd;
+            background-color: #fff;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .btn-outline-primary:hover {
+            color: #fff;
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+
+        /* Tüm rapor butonlarına aynı stil */
+        .report-btn {
+            color: #0d6efd;
+            border: 1.5px solid #0d6efd;
+            background-color: #fff;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .report-btn:hover {
+            color: #fff;
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+
     </style>
 </head>
 <body>
+
 <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>📊 Raporlar Merkezi</h1>
-        <a href="/management/" class="btn btn-outline-secondary btn-sm">
+        <h1><i class="fa fa-chart-column me-2"></i>Raporlar Merkezi</h1>
+        <a href="/management/" class="btn btn-outline-primary btn-sm">
             <i class="fa fa-arrow-left me-1"></i> Yönetim Paneline Dön
         </a>
     </div>
 
     <div class="row g-4">
+        <!-- Genel Üretim Raporu -->
         <div class="col-md-4">
-            <div class="card border-primary">
+            <div class="card">
                 <div class="card-body text-center">
-                    <i class="fa fa-chart-line fa-2x text-primary mb-2"></i>
+                    <i class="fa fa-chart-line fa-2x mb-2"></i>
                     <h5 class="card-title">Genel Üretim Raporu</h5>
                     <p class="text-muted small">Aşamalar, adetler ve üretim ilerlemeleri.</p>
-                    <a href="/reports/" class="btn btn-primary btn-sm w-100">Raporu Gör →</a>
+                    <a href="/reports/" class="btn report-btn btn-sm w-100">Raporu Gör →</a>
                 </div>
             </div>
         </div>
 
+        <!-- Personel Raporu -->
         <div class="col-md-4">
-            <div class="card border-secondary">
+            <div class="card">
                 <div class="card-body text-center">
-                    <i class="fa fa-users fa-2x text-secondary mb-2"></i>
+                    <i class="fa fa-users fa-2x mb-2"></i>
                     <h5 class="card-title">Personel Raporu</h5>
                     <p class="text-muted small">Kimin ne kadar işlem yaptığı, performans analizi.</p>
-                    <a href="/staff-reports/" class="btn btn-secondary btn-sm w-100">Raporu Gör →</a>
+                    <a href="/staff-reports/" class="btn report-btn btn-sm w-100">Raporu Gör →</a>
                 </div>
             </div>
         </div>
 
+        <!-- Hızlı Kâr & Ciro -->
         <div class="col-md-4">
-            <div class="card border-success">
+            <div class="card">
                 <div class="card-body text-center">
-                    <i class="fa fa-coins fa-2x text-success mb-2"></i>
+                    <i class="fa fa-coins fa-2x mb-2"></i>
                     <h5 class="card-title">Hızlı Kâr & Ciro</h5>
                     <p class="text-muted small">Sevkiyatı yapılmış siparişlerin maliyet ve kazançları.</p>
-                    <a href="/reports/fast/" class="btn btn-success btn-sm w-100">Raporu Gör →</a>
+                    <a href="/reports/fast/" class="btn report-btn btn-sm w-100">Raporu Gör →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fasoncu Raporu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fa fa-industry fa-2x mb-2"></i>
+                    <h5 class="card-title">Fasoncu Raporu</h5>
+                    <p class="text-muted small">Fason üreticilerin iş dağılımı ve performans raporu.</p>
+                    <a href="{% url 'fasoncu_raporu' %}" class="btn report-btn btn-sm w-100">Raporu Gör →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nakışçı Raporu -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="fa fa-pen-nib fa-2x mb-2"></i>
+                    <h5 class="card-title">Nakışçı Raporu</h5>
+                    <p class="text-muted small">Nakışçılara verilen siparişlerin durumu ve istatistikleri.</p>
+                    <a href="{% url 'nakisci_raporu' %}" class="btn report-btn btn-sm w-100">Raporu Gör →</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 </body>
 </html>

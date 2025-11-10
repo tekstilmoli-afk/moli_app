@@ -61,6 +61,10 @@ urlpatterns = [
     path("reports/giden-urunler/", views.giden_urunler_raporu, name="giden_urunler_raporu"),
     path("reports/home/", views.reports_home, name="reports_home"),
 
+    # 🧵 Fasoncu ve Nakışçı Raporları
+    path("reports/fasoncu/", views.fasoncu_raporu, name="fasoncu_raporu"),
+    path("reports/nakisci/", views.nakisci_raporu, name="nakisci_raporu"),
+
     # 💰 Ürün Maliyet Yönetimi
     path("product-costs/", views.product_cost_list, name="product_cost_list"),
 
@@ -70,6 +74,12 @@ urlpatterns = [
     path("asistan/", views.ai_assistant_view, name="ai_assistant"),
 
     path("api/assistant/", views.ai_assistant_api, name="ai_assistant_api"),
+
+    path("fasoncu/yeni/", views.fasoncu_yeni, name="fasoncu_yeni"),
+
+    path('reports/nakisci/', views.nakisci_raporu, name='nakisci_raporu'),
+    
+    path('nakisci/yeni/', views.nakisci_ekle, name='nakisci_ekle'),
 ]
 
 
@@ -78,3 +88,6 @@ urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 # 📌 Medya dosyaları (QR kodları, yüklenen resimler)
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+
+

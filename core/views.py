@@ -20,6 +20,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
+from core.models import Fasoncu
+from .models import Order, Nakisci
 
 
 
@@ -132,12 +134,13 @@ def order_list(request):
         ("sevkiyat_durum", "gonderildi"): "Sevkiyat Gönderildi",
     }
 
+
     # ✅ Her siparişin son event’ini tek sorguda al (timestamp + id sıralaması)
+    # YENİ (ID her zaman artar → en güncel güvenli)
     latest_event = (
         OrderEvent.objects
         .filter(order=OuterRef("pk"))
-        .order_by("-timestamp", "-id")
-        .values("stage", "value")[:1]
+        .order_by("-id")[:1]  # ✅ sadece 1 kayıt dönsün, PostgreSQL hatası gider
     )
 
     # ✅ Ana sorgu
@@ -760,6 +763,9 @@ def staff_reports_view(request):
 
 @login_required
 def fast_profit_report(request):
+    from django.db import connections
+    connections["default"].close()  # ✅ Eski bağlantıyı sıfırla
+
     # 🛡️ Sadece patron ve müdür erişebilsin
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu sayfaya erişim yetkiniz yok.")
@@ -773,14 +779,18 @@ def fast_profit_report(request):
     tarih2 = request.GET.get("t2")
 
     # 🧠 Her siparişin en son event'ini al
-    latest_event = OrderEvent.objects.filter(order=OuterRef("pk")).order_by("-timestamp")
+    latest_event = (
+        OrderEvent.objects
+        .filter(order=OuterRef("pk"))
+        .order_by("-id")[:1]  # ✅ sadece 1 kayıt dönsün
+    )
 
     # 🔍 Sadece son event'i "sevkiyat_durum = gonderildi" olan siparişleri al
     orders = (
         Order.objects.select_related("musteri")
         .annotate(
-            latest_stage=Subquery(latest_event.values("stage")[:1]),
-            latest_value=Subquery(latest_event.values("value")[:1]),
+            latest_stage=Subquery(latest_event.values("stage")),
+            latest_value=Subquery(latest_event.values("value")),
         )
         .filter(latest_stage="sevkiyat_durum", latest_value="gonderildi")
     )
@@ -836,6 +846,7 @@ def fast_profit_report(request):
     }
 
     return render(request, "reports/fast_profit_report.html", context)
+
 
 
 
@@ -976,3 +987,146 @@ def ai_assistant_api(request):
 
     # GET isteklerine basit bir yanıt dön
     return JsonResponse({"reply": "Bu endpoint sadece POST isteklerini kabul eder."})
+
+@login_required
+def fasoncu_ekle(request):
+    if request.method == "POST":
+        ad = request.POST.get("ad")
+        telefon = request.POST.get("telefon")
+        notlar = request.POST.get("notlar")
+
+        if ad:
+            Fasoncu.objects.create(ad=ad, telefon=telefon, notlar=notlar)
+            messages.success(request, f"{ad} başarıyla eklendi.")
+            return redirect("/reports/fasoncu/")
+        else:
+            messages.error(request, "Fasoncu adı boş bırakılamaz.")
+    return render(request, "fasoncu_ekle.html")
+
+@login_required
+def fasoncu_raporu(request):
+    from django.db.models import Q
+
+    # 🔹 Tüm fasoncuları filtre dropdown için al
+    fasoncular = Fasoncu.objects.all().order_by("ad")
+
+    # 🔹 Seçili fasoncu ve tarih aralıklarını al
+    fasoncu_id = request.GET.get("fasoncu")
+    t1 = request.GET.get("t1")
+    t2 = request.GET.get("t2")
+
+    # 🔹 OrderEvent’lerden filtreye göre çekim
+    raporlar = OrderEvent.objects.select_related("order", "order__musteri", "fasoncu")
+
+    # Eğer belirli fasoncu seçildiyse
+    if fasoncu_id:
+        raporlar = raporlar.filter(fasoncu_id=fasoncu_id)
+
+    # Eğer tarih aralığı varsa uygula
+    if t1 and t2:
+        raporlar = raporlar.filter(timestamp__range=[t1, t2])
+    elif t1:
+        raporlar = raporlar.filter(timestamp__date__gte=t1)
+    elif t2:
+        raporlar = raporlar.filter(timestamp__date__lte=t2)
+
+    # 🔹 Yalnızca fasonla ilgili event'leri göster (örnek: fasona verildi / alındı)
+    raporlar = raporlar.filter(
+        Q(stage__icontains="fason")  # "dikim_fason_durumu" veya "susleme_fason_durumu"
+    ).order_by("-timestamp")
+
+    # 🔹 Görsel veriler için küçük context hazırlama
+    data = []
+    for r in raporlar:
+        data.append({
+            "order": r.order,
+            "durum": f"{r.stage.replace('_', ' ').title()} → {r.value.title()}",
+            "tarih": r.timestamp,
+            "personel": r.user,
+        })
+
+    context = {
+        "fasoncular": fasoncular,
+        "raporlar": data,
+    }
+    return render(request, "reports/fasoncu_raporu.html", context)
+
+@login_required
+def fasoncu_yeni(request):
+    if request.method == "POST":
+        ad = request.POST.get("ad")
+        telefon = request.POST.get("telefon")
+        notlar = request.POST.get("notlar")
+
+        if ad:
+            Fasoncu.objects.create(ad=ad, telefon=telefon, notlar=notlar, eklenme_tarihi=timezone.now())
+            messages.success(request, "Yeni fasoncu başarıyla eklendi.")
+            return redirect("/reports/fasoncu/")
+        else:
+            messages.error(request, "Fasoncu adı zorunludur.")
+
+    return render(request, "fasoncu_yeni.html")
+
+
+
+@login_required
+def nakisci_raporu(request):
+    from django.db.models import Q
+
+    # 🔹 Tüm nakışçıları filtre dropdown için al
+    nakiscilar = Nakisci.objects.all().order_by("ad")
+
+    # 🔹 Seçili nakışçı ve tarih aralıklarını al
+    nakisci_id = request.GET.get("nakisci")
+    t1 = request.GET.get("t1")
+    t2 = request.GET.get("t2")
+
+    # 🔹 OrderEvent’lerden filtreye göre çekim
+    raporlar = OrderEvent.objects.select_related("order", "order__musteri", "nakisci")
+
+    # Eğer belirli nakışçı seçildiyse
+    if nakisci_id:
+        raporlar = raporlar.filter(nakisci_id=nakisci_id)
+
+    # Eğer tarih aralığı varsa uygula
+    if t1 and t2:
+        raporlar = raporlar.filter(timestamp__range=[t1, t2])
+    elif t1:
+        raporlar = raporlar.filter(timestamp__date__gte=t1)
+    elif t2:
+        raporlar = raporlar.filter(timestamp__date__lte=t2)
+
+    # 🔹 Yalnızca nakış ile ilgili event’leri göster (örnek: nakışa verildi / alındı)
+    raporlar = raporlar.filter(
+        Q(stage__icontains="nakis") | Q(stage__icontains="nakış")
+    ).order_by("-timestamp")
+
+    # 🔹 Görsel veriler için context hazırlama
+    data = []
+    for r in raporlar:
+        data.append({
+            "order": r.order,
+            "durum": f"{r.stage.replace('_', ' ').title()} → {r.value.title()}",
+            "tarih": r.timestamp,
+            "personel": r.user,
+        })
+
+    context = {
+        "nakiscilar": nakiscilar,
+        "raporlar": data,
+    }
+    return render(request, "reports/nakisci_raporu.html", context)
+
+
+
+
+@login_required
+def nakisci_ekle(request):
+    if request.method == 'POST':
+        ad = request.POST.get('ad', '').strip()
+        telefon = request.POST.get('telefon', '').strip()
+        notlar = request.POST.get('notlar', '').strip()
+        if ad:
+            Nakisci.objects.create(ad=ad, telefon=telefon, notlar=notlar)
+            return redirect('nakisci_raporu')  # veya '/reports/nakisci/'
+    return render(request, 'nakisci/yeni.html')
