@@ -23,10 +23,11 @@
                     {{ form.siparis_tipi }}
                 </div>
 
-                <div class="col-md-6 mb-3">
+                <div class="col-md-6 mb-3" id="musteri_div">
                     <label for="id_musteri" class="form-label">Müşteri</label>
                     {{ form.musteri }}
                 </div>
+
 
                 <div class="col-md-6 mb-3">
     <label for="id_musteri_referans" class="form-label">Müşteri Sipariş Referansı</label>
@@ -138,6 +139,38 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("✅ JS çalıştı - Stoğa Üretim kontrolü başlatıldı");
+
+    const siparisTipiSelect = document.getElementById('id_siparis_tipi');
+    const musteriDiv = document.getElementById('musteri_div');
+
+    if (!siparisTipiSelect || !musteriDiv) {
+        console.warn("⚠️ Elemanlar bulunamadı:", siparisTipiSelect, musteriDiv);
+        return;
+    }
+
+    function toggleMusteri() {
+        console.log("🌀 Seçim değişti:", siparisTipiSelect.value);
+        if (siparisTipiSelect.value === 'STOK') {
+            musteriDiv.style.display = 'none';
+            console.log("🚫 Müşteri alanı gizlendi");
+            const musteriInput = document.getElementById('id_musteri');
+            if (musteriInput) musteriInput.value = '';
+        } else {
+            musteriDiv.style.display = 'block';
+            console.log("👁️ Müşteri alanı gösterildi");
+        }
+    }
+
+    siparisTipiSelect.addEventListener('change', toggleMusteri);
+    toggleMusteri(); // sayfa açılışında da kontrol et
+});
+</script>
+
+
 
 </body>
 </html>

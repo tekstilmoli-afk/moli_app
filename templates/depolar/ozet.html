@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Başlık + Arama Butonu -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold">🏬 Depo Stok Özeti</h2>
+        <a href="{% url 'depo_arama' %}" class="btn btn-outline-primary btn-sm">
+            🔍 Depolarda Ara
+        </a>
+    </div>
+
+    <hr>
+
+    {% if depolar %}
+        <div class="table-responsive shadow-sm rounded">
+            <table class="table table-striped table-hover align-middle table-sm">
+                <thead class="table-dark">
+                    <tr>
+                        <th>🏷️ Depo</th>
+                        <th>📦 Toplam Adet</th>
+                        <th>🔢 Kayıt Sayısı</th>
+                        <th>🕒 Son Güncelleme</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in depolar %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'depo_detay' d.depo %}" class="fw-semibold text-decoration-none text-primary">
+                                {{ d.depo }}
+                            </a>
+                        </td>
+                        <td>{{ d.toplam_adet|default:0 }}</td>
+                        <td>{{ d.kayit_sayisi }}</td>
+                        <td>{{ d.son_guncelleme|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="text-muted">Henüz depo kaydı bulunmuyor.</p>
+    {% endif %}
+</div>
+{% endblock %}

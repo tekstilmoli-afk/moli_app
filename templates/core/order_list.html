@@ -103,7 +103,15 @@
                 {% for order in orders %}
                 <tr>
                     <td>{{ order.siparis_numarasi }}</td>
-                    <td>{{ order.musteri }}</td>
+                     <td>
+        {% if order.musteri %}
+          {{ order.musteri }}
+        {% elif order.siparis_tipi == 'STOK' %}
+          <span class="text-secondary fst-italic">Stoğa Üretim</span>
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
                     <td>{{ order.urun_kodu }}</td>
                     <td>{{ order.adet }}</td>
                     <td>{{ order.renk }}</td>

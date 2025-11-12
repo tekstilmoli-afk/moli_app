@@ -120,6 +120,26 @@
         </div>
     </div>
 
+
+
+{% if user_is_manager or request.user.username == "tahir" %}
+    <!-- 📦 Depolar (Yalnızca yetkili kişiler görecek) -->
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">📦 Depolar</h5>
+                <p class="card-text small text-muted">
+                    Hangi depoda kaç ürün olduğunu görüntüleyin, stok özetlerini inceleyin.
+                </p>
+                <a href="{% url 'depo_ozet' %}" class="btn btn-secondary btn-sm w-100">
+                    <i class="fa-solid fa-boxes-stacked me-1"></i> Depo Listesine Git →
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+
         <!-- 💬 Moli Asistan -->
     <div class="col-12 col-md-4">
         <div class="card shadow-sm border-0">

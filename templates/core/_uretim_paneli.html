@@ -312,17 +312,20 @@
 <div class="stage-block">
     <h6 class="text-primary">📦 Hazır & 🚚 Sevkiyat</h6>
     <div class="stage-actions">
-        <button class="soft-btn btn-soft-success"
-            hx-get="{% url 'update_stage' order.id %}"
-            hx-vals='{"stage": "hazir_durum", "value": "bitti"}'
-            hx-target="#uretim-paneli" hx-swap="innerHTML">📦 Hazırlandı</button>
 
+        <!-- 🏬 Depoya Girdi Butonu -->
+        <button type="button" class="soft-btn btn-soft-success" data-bs-toggle="modal" data-bs-target="#stokModal">
+            📦 Depoya Girdi
+        </button>
+
+        <!-- 🚚 Gönderildi Butonu -->
         <button class="soft-btn btn-soft-dark"
             hx-get="{% url 'update_stage' order.id %}"
             hx-vals='{"stage": "sevkiyat_durum", "value": "gonderildi"}'
             hx-target="#uretim-paneli" hx-swap="innerHTML">🚚 Gönderildi</button>
     </div>
 </div>
+
 
 <!-- ✅ JS Fonksiyonları -->
 <script>
@@ -356,3 +359,39 @@ document.body.addEventListener('htmx:afterSwap', function(evt) {
     }
 });
 </script>
+
+<!-- 📦 Depoya Aktarım Modal -->
+<div class="modal fade" id="stokModal" tabindex="-1" aria-labelledby="stokModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST" action="{% url 'stok_ekle' order.id %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="stokModalLabel">Depoya Ürün Aktarımı</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Depo Seç</label>
+            <select name="depo" class="form-select" required>
+              <option value="">-- Seçiniz --</option>
+              <option value="KORIDOR">Koridor</option>
+              <option value="SHOWROOM">Showroom</option>
+              <option value="SHOWROOM_MUTF">Showroom Mutfak</option>
+              <option value="DANTEL_YANI">Dantel Odası Yanı</option>
+              <option value="ELISI">Elişi Deposu</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Adet</label>
+            <input type="number" name="adet" class="form-control" value="{{ order.adet|default_if_none:'' }}" min="1" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+          <button type="submit" class="btn btn-success">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

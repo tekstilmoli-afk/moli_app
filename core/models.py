@@ -96,6 +96,7 @@ class Order(models.Model):
     SIPARIS_TIPLERI = [
         ('ÖZEL', 'Özel'),
         ('SERI', 'Seri'),
+        ('STOK', 'Stoğa Üretim')  # 👈 Hazır üretim / depoya üretim tipi
     ]
 
     siparis_tipi = models.CharField(max_length=5, choices=SIPARIS_TIPLERI, null=True, blank=True, db_index=True)
@@ -162,6 +163,20 @@ class Order(models.Model):
     maliyet_para_birimi = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="TRY")
     maliyet_override = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     ekstra_maliyet = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+
+    @property
+    def is_stok_siparis(self) -> bool:
+        return self.siparis_tipi == 'STOK'
+
+    @property
+    def is_ozel_siparis(self) -> bool:
+        return self.siparis_tipi == 'ÖZEL'
+
+    @property
+    def is_seri_siparis(self) -> bool:
+        return self.siparis_tipi == 'SERI'
+
 
     @property
     def efektif_maliyet(self):
@@ -334,3 +349,34 @@ class OrderEvent(models.Model):
             models.Index(fields=["user"]),
             models.Index(fields=["stage"]),
         ]
+
+# 🏬 DEPO STOK MODELİ
+class DepoStok(models.Model):
+    DEPO_SECENEKLERI = [
+        ('KORIDOR', 'Koridor'),
+        ('SHOWROOM', 'Showroom'),
+        ('SHOWROOM_MUTF', 'Showroom Mutfak'),
+        ('DANTEL_YANI', 'Dantel Odası Yanı'),
+        ('ELISI', 'Elişi Deposu'),
+    ]
+
+    urun_kodu = models.CharField(max_length=100, db_index=True)
+    renk = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    beden = models.CharField(max_length=50, blank=True, null=True, db_index=True)
+    adet = models.PositiveIntegerField(default=0)
+    depo = models.CharField(max_length=20, choices=DEPO_SECENEKLERI, default='KORIDOR')
+    aciklama = models.TextField(blank=True, null=True)
+    eklenme_tarihi = models.DateTimeField(auto_now_add=True)
+    order = models.ForeignKey('Order', on_delete=models.SET_NULL, null=True, blank=True, related_name='stok_kaydi')
+
+    def __str__(self):
+        return f"{self.urun_kodu} - {self.renk}/{self.beden} ({self.depo}) [{self.adet} adet]"
+
+class UretimGecmisi(models.Model):
+    urun = models.CharField(max_length=100)
+    asama = models.CharField(max_length=100)
+    aciklama = models.TextField(blank=True, null=True)
+    tarih = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.urun} - {self.asama}"

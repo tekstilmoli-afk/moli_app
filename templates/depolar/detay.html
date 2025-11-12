@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h3>📦 {{ depo_adi }} Deposu</h3>
+  <p class="text-muted">Toplam adet: {{ toplam_adet }}</p>
+
+  <table class="table table-striped table-bordered align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Ürün</th>
+        <th>Renk</th>
+        <th>Beden</th>
+        <th>Adet</th>
+        <th>İşlem</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in stoklar %}
+      <tr>
+        <td>{{ s.urun_kodu }}</td>
+        <td>{{ s.renk }}</td>
+        <td>{{ s.beden }}</td>
+        <td>{{ s.adet }}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-success"
+                  data-bs-toggle="modal"
+                  data-bs-target="#verModal{{ s.id }}">
+              📦 Hazırdan Ver
+          </button>
+        </td>
+      </tr>
+
+      <!-- Modal (her satır için) -->
+      <div class="modal fade" id="verModal{{ s.id }}" tabindex="-1" aria-labelledby="verModalLabel{{ s.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form method="post" action="{% if s.id %}{% url 'hazirdan_ver' s.id %}{% else %}#{% endif %}">
+              {% csrf_token %}
+              <div class="modal-header">
+                <h5 class="modal-title" id="verModalLabel{{ s.id }}">📦 {{ s.urun_kodu }} - {{ s.renk }} ({{ s.beden }})</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <label class="form-label">Sipariş Seç</label>
+                <select name="order_id" class="form-select" required>
+                  <option value="">Sipariş seçin...</option>
+                  {% for o in siparisler %}
+                    <option value="{{ o.id }}">{{ o.siparis_numarasi }} - {{ o.musteri }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="submit" class="btn btn-success">✅ Teslim Et</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}

@@ -22,8 +22,18 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Fasoncu
 from .models import Order, Nakisci
-
-
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib import messages
+from django.utils import timezone
+from .models import Order, DepoStok, OrderEvent
+from django.db.models import Sum, Count, Max
+from django.db.models import Q, Sum
+from django.views.decorators.cache import never_cache
+from .models import DepoStok, Order, UretimGecmisi
+from django.db.models import Sum
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from .models import DepoStok, Order
 
 from openpyxl import Workbook
 
@@ -326,6 +336,56 @@ def order_detail(request, pk):
         },
     )
 
+def stok_ekle(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+
+    if request.method == "POST":
+        depo = request.POST.get("depo")
+        adet = int(request.POST.get("adet", 0))
+
+        if not depo or adet <= 0:
+            messages.error(request, "Lütfen depo ve adet bilgilerini doğru girin.")
+            return redirect("order_detail", pk=order.id)
+
+        # Stoğa kaydet
+        DepoStok.objects.create(
+            urun_kodu=order.urun_kodu,
+            renk=order.renk,
+            beden=order.beden,
+            adet=adet,
+            depo=depo,
+            aciklama=f"Stoğa Üretim: {order.siparis_numarasi}",
+            order=order
+        )
+
+        # Üretim geçmişine kayıt
+        OrderEvent.objects.create(
+            order=order,
+            user=request.user.username,
+            gorev="hazir",
+            stage="Depoya Aktarım",
+            value=f"{adet} adet stoğa eklendi ({depo})",
+            adet=adet,
+            timestamp=timezone.now(),
+        )
+
+        messages.success(request, f"✅ {adet} adet ürün {depo} deposuna eklendi.")
+        return redirect("order_detail", pk=order.id)
+
+@login_required
+def depo_ozet(request):
+    depo_ozetleri = (
+        DepoStok.objects
+        .values('depo')
+        .annotate(
+            toplam_adet=Sum('adet'),
+            kayit_sayisi=Count('id'),
+            son_guncelleme=Max('eklenme_tarihi')  # ✅ düzeltildi
+        )
+        .order_by('depo')
+    )
+
+    return render(request, 'depolar/ozet.html', {'depolar': depo_ozetleri})
 
 # 🔐 Özel Login (hızlı ve güvenli)
 @csrf_exempt
@@ -901,7 +961,10 @@ def product_cost_list(request):
 def management_panel(request):
     # Kullanıcı rolünü kontrol et (sadece patron veya müdür erişebilir)
     user_groups = list(request.user.groups.values_list("name", flat=True))
-    if not any(role in user_groups for role in ["patron", "mudur"]):
+    user_is_manager = any(role in user_groups for role in ["patron", "mudur"])
+
+    # Eğer kullanıcı müdür veya patron değilse, order_list sayfasına yönlendir
+    if not user_is_manager:
         return redirect("order_list")
 
     # 📅 Bugünün tarihini al
@@ -918,10 +981,12 @@ def management_panel(request):
     # 🔹 Kullanıcı görev bilgilerini al
     user_profiles = {p.user.username: p.gorev for p in UserProfile.objects.all()}
 
+    # 🔹 Yetki durumunu şablona gönder
     context = {
         "events_today": events_today,
         "user_profiles": user_profiles,
         "today": today,
+        "user_is_manager": user_is_manager,  # <-- burası yeni eklendi
     }
 
     # Yönetim paneli sayfasını göster
@@ -1130,3 +1195,133 @@ def nakisci_ekle(request):
             Nakisci.objects.create(ad=ad, telefon=telefon, notlar=notlar)
             return redirect('nakisci_raporu')  # veya '/reports/nakisci/'
     return render(request, 'nakisci/yeni.html')
+
+@login_required
+def depo_detay(request, depo_adi):
+    """
+    Belirli bir deponun içindeki stok kayıtlarını ve sipariş listesini gösterir.
+    """
+    stoklar = (
+        DepoStok.objects
+        .filter(depo=depo_adi)
+        .select_related("order")
+        .order_by("-eklenme_tarihi")
+    )
+
+    toplam_adet = stoklar.aggregate(Sum("adet"))["adet__sum"] or 0
+
+    # 🔹 Tüm siparişleri getir (veya istersen aktifleri filtreleyebilirsin)
+    siparisler = Order.objects.all().order_by("-siparis_tarihi")
+
+    context = {
+        "depo_adi": depo_adi,
+        "stoklar": stoklar,
+        "toplam_adet": toplam_adet,
+        "siparisler": siparisler,
+    }
+
+    return render(request, "depolar/detay.html", context)
+
+
+
+
+
+@login_required
+def depo_arama(request):
+    # 🔍 Filtre parametreleri
+    urun_kodu = request.GET.get("urun_kodu", "").strip()
+    renk = request.GET.get("renk", "")
+    beden = request.GET.get("beden", "")
+    depo = request.GET.get("depo", "")
+
+    # 🧮 Filtre oluştur
+    filtre = Q()
+    if urun_kodu:
+        filtre &= Q(urun_kodu__icontains=urun_kodu)
+    if renk:
+        filtre &= Q(renk=renk)
+    if beden:
+        filtre &= Q(beden=beden)
+    if depo:
+        filtre &= Q(depo=depo)
+
+    # 📦 Sorgu
+    stoklar = []
+    if any([urun_kodu, renk, beden, depo]):
+        stoklar = (
+            DepoStok.objects
+            .filter(filtre)
+            .select_related("order")  # 🔗 Sipariş ilişkisini getir
+            .values(
+                "depo",
+                "urun_kodu",
+                "renk",
+                "beden",
+                "order__id",
+                "order__siparis_numarasi"
+            )
+            .annotate(toplam_adet=Sum("adet"))
+            .order_by("depo", "urun_kodu")
+        )
+
+    # 🔽 Dropdown listeleri dinamik olarak çek
+    renk_listesi = (
+        DepoStok.objects.exclude(renk__isnull=True)
+        .values_list("renk", flat=True).distinct().order_by("renk")
+    )
+    beden_listesi = (
+        DepoStok.objects.exclude(beden__isnull=True)
+        .values_list("beden", flat=True).distinct().order_by("beden")
+    )
+    depo_listesi = (
+        DepoStok.objects.exclude(depo__isnull=True)
+        .values_list("depo", flat=True).distinct().order_by("depo")
+    )
+    urun_listesi = (
+        DepoStok.objects.exclude(urun_kodu__isnull=True)
+        .values_list("urun_kodu", flat=True).distinct().order_by("urun_kodu")
+    )
+
+    context = {
+        "stoklar": stoklar,
+        "renk_listesi": renk_listesi,
+        "beden_listesi": beden_listesi,
+        "depo_listesi": depo_listesi,
+        "urun_listesi": urun_listesi,
+        "request": request,
+    }
+    return render(request, "depolar/arama.html", context)
+
+
+
+@login_required
+def hazirdan_ver(request, stok_id):
+    stok = get_object_or_404(DepoStok, id=stok_id)
+
+    if request.method == "POST":
+        order_id = request.POST.get("order_id")
+        order = get_object_or_404(Order, id=order_id)
+
+        # 🔻 Stoktan 1 adet düş
+        stok.adet = max(0, stok.adet - 1)
+        stok.order = order
+        stok.save()
+
+        # 🔹 Üretim geçmişine kayıt
+        UretimGecmisi.objects.create(
+            urun=stok.urun_kodu,
+            asama="Hazırdan Verildi",
+            aciklama=f"{order.siparis_numarasi} siparişine teslim edildi.",
+            tarih=timezone.now(),
+        )
+
+        messages.success(request, f"{stok.urun_kodu} {order.siparis_numarasi} siparişine teslim edildi.")
+        return redirect("depo_detay", depo_adi=stok.depo)
+
+    # 🔸 Tüm siparişleri getir
+    siparisler = Order.objects.all().order_by("-id")
+
+    return render(request, "depolar/hazirdan_ver.html", {
+        "stok": stok,
+        "siparisler": siparisler,
+    })

@@ -169,7 +169,17 @@
         </div>
 
         <div class="row mb-3">
-            <div class="col-md-6"><span class="label">Müşteri:</span> {{ order.musteri }}</div>
+            <div class="col-md-6">
+  <span class="label">Müşteri:</span>
+  {% if order.musteri %}
+    {{ order.musteri }}
+  {% elif order.siparis_tipi == 'STOK' %}
+    <em class="text-secondary">Stoğa Üretim</em>
+  {% else %}
+    <span class="text-muted">—</span>
+  {% endif %}
+</div>
+
             <div class="col-md-6"><span class="label">Ürün Kodu:</span> {{ order.urun_kodu }}</div>
         </div>
 
