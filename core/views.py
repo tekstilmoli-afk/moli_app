@@ -34,6 +34,8 @@ from django.db.models import Sum
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from .models import DepoStok, Order
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect
 
 from openpyxl import Workbook
 
@@ -1325,3 +1327,14 @@ def hazirdan_ver(request, stok_id):
         "stok": stok,
         "siparisler": siparisler,
     })
+
+@login_required
+def cikti_alindi(request, pk):
+    """
+    Siparişin çıktısı alındı olarak işaretlenir.
+    """
+    order = get_object_or_404(Order, id=pk)
+    order.cikti_alindi = True
+    order.save()
+    messages.success(request, f"{order.siparis_numarasi} siparişinin çıktısı alındı olarak işaretlendi.")
+    return redirect("order_list")

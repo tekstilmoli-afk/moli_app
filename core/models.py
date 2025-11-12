@@ -125,6 +125,7 @@ class Order(models.Model):
     hazir_tarihi = models.DateTimeField(blank=True, null=True)
     sevkiyat_yapan = models.CharField(max_length=100, blank=True, null=True)
     sevkiyat_tarihi = models.DateTimeField(blank=True, null=True)
+    cikti_alindi = models.BooleanField(default=False)
 
     DURUM_SECENEKLERI = [
         ('bekliyor', 'Bekliyor'),
@@ -380,3 +381,5 @@ class UretimGecmisi(models.Model):
 
     def __str__(self):
         return f"{self.urun} - {self.asama}"
+
+

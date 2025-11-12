@@ -81,7 +81,7 @@
         </a>
     </div>
 
-    <!-- 📦 Tablo Başlangıcı -->
+    <!-- 📦 Tablo -->
     <div class="table-responsive shadow-sm rounded">
         <table class="table table-striped table-bordered table-hover align-middle table-sm">
             <thead class="table-dark">
@@ -103,28 +103,27 @@
                 {% for order in orders %}
                 <tr>
                     <td>{{ order.siparis_numarasi }}</td>
-                     <td>
-        {% if order.musteri %}
-          {{ order.musteri }}
-        {% elif order.siparis_tipi == 'STOK' %}
-          <span class="text-secondary fst-italic">Stoğa Üretim</span>
-        {% else %}
-          <span class="text-muted">—</span>
-        {% endif %}
-      </td>
+                    <td>
+                        {% if order.musteri %}
+                            {{ order.musteri }}
+                        {% elif order.siparis_tipi == 'STOK' %}
+                            <span class="text-secondary fst-italic">Stoğa Üretim</span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
                     <td>{{ order.urun_kodu }}</td>
                     <td>{{ order.adet }}</td>
                     <td>{{ order.renk }}</td>
                     <td>{{ order.beden }}</td>
                     <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
 
-                    <!-- ✅ SON DURUM -->
                     <td class="status-cell">
                         {% if order.formatted_status and order.formatted_status != "-" %}
-    <small class="fw-semibold">{{ order.formatted_status }}</small>
-{% else %}
-    <span class="text-muted fst-italic">-</span>
-{% endif %}
+                            <small class="fw-semibold">{{ order.formatted_status }}</small>
+                        {% else %}
+                            <span class="text-muted fst-italic">-</span>
+                        {% endif %}
                     </td>
 
                     <td>
@@ -155,20 +154,36 @@
                         {% endif %}
                     </td>
 
-                    <td>
-                        {% if order.id %}
-                            <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">Görüntüle</a>
-                        {% else %}
-                            <span class="text-muted small fst-italic">Yok</span>
-                        {% endif %}
+                    <td class="text-end">
+                        <div class="d-flex justify-content-end align-items-center gap-2 flex-wrap">
 
-                        {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
-                            <button 
-                              class="btn btn-sm btn-danger ms-1"
-                              onclick="deleteOrderInstant(this, '{{ order.id }}')">
-                              Sil
-                            </button>
-                        {% endif %}
+                            {% if order.id %}
+                                <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">
+                                    👁️ Görüntüle
+                                </a>
+                            {% else %}
+                                <span class="text-muted small fst-italic">Yok</span>
+                            {% endif %}
+
+                            {% if order.cikti_alindi %}
+                                <span class="badge bg-success">📄 Yazdırıldı</span>
+                            {% else %}
+                                <form method="post" action="{% url 'cikti_alindi' order.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-success btn-sm">
+                                        📄 Yazdırıldı Olarak İşaretle
+                                    </button>
+                                </form>
+                            {% endif %}
+
+                            {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
+                                <button 
+                                    class="btn btn-sm btn-danger"
+                                    onclick="deleteOrderInstant(this, '{{ order.id }}')">
+                                    🗑️ Sil
+                                </button>
+                            {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
@@ -194,7 +209,7 @@
 
       <form method="get">
         <div class="modal-body">
-          <!-- ✅ Sipariş Numarası -->
+          <!-- ✅ Filtre alanları -->
           <div class="mb-3">
             <label class="form-label">Sipariş Numarası</label>
             <select name="siparis_no" class="selectpicker" multiple data-live-search="true" data-width="100%">
@@ -204,7 +219,6 @@
             </select>
           </div>
 
-          <!-- ✅ Müşteri -->
           <div class="mb-3">
             <label class="form-label">Müşteri</label>
             <select name="musteri" class="selectpicker" multiple data-live-search="true" data-width="100%">
@@ -214,7 +228,6 @@
             </select>
           </div>
 
-          <!-- ✅ Ürün Kodu -->
           <div class="mb-3">
             <label class="form-label">Ürün Kodu</label>
             <select name="urun_kodu" class="selectpicker" multiple data-live-search="true" data-width="100%">
@@ -224,7 +237,6 @@
             </select>
           </div>
 
-          <!-- ✅ Renk -->
           <div class="mb-3">
             <label class="form-label">Renk</label>
             <select name="renk" class="selectpicker" multiple data-live-search="true" data-width="100%">
@@ -234,7 +246,6 @@
             </select>
           </div>
 
-          <!-- ✅ Beden -->
           <div class="mb-3">
             <label class="form-label">Beden</label>
             <select name="beden" class="selectpicker" multiple data-live-search="true" data-width="100%">
@@ -244,7 +255,6 @@
             </select>
           </div>
 
-          <!-- ✅ Üretim Durumu -->
           <div class="mb-3">
             <label class="form-label">Üretim Durumu</label>
             <select name="status" class="selectpicker" multiple data-live-search="true" data-width="100%">
@@ -254,7 +264,6 @@
             </select>
           </div>
 
-          <!-- ✅ Teslim Tarihi Aralığı -->
           <div class="mb-3">
             <label class="form-label">Teslim Tarihi (Başlangıç - Bitiş)</label>
             <div class="d-flex gap-2">
@@ -273,10 +282,8 @@
   </div>
 </div>
 
-<!-- ✅ jQuery (Bootstrap Select için gerekli) -->
+<!-- ✅ jQuery & Bootstrap -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- 🔽 Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- ✅ Bootstrap Select -->
@@ -324,10 +331,8 @@ function printLabel(qrUrl, siparisNo, tipi, musteri, urunKodu, renk, beden, must
 
 function deleteOrderInstant(button, orderId) {
     if (!confirm("Bu siparişi silmek istediğinize emin misiniz?")) return;
-
     const row = button.closest('tr');
     row.style.opacity = "0.5";
-
     fetch(`/orders/${orderId}/delete/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
@@ -336,7 +341,7 @@ function deleteOrderInstant(button, orderId) {
     .then(data => {
         alert(data.message);
         if (data.success) {
-            setTimeout(() => location.reload(), 400); // ✅ Silindikten sonra sayfa yenilensin
+            setTimeout(() => location.reload(), 400);
         } else {
             row.style.opacity = "1";
         }
@@ -347,7 +352,6 @@ function deleteOrderInstant(button, orderId) {
     });
 }
 
-
 document.addEventListener('DOMContentLoaded', function () {
     $('.selectpicker').selectpicker();
     $('.selectpicker').on('changed.bs.select', function () {
@@ -355,6 +359,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-
 </body>
 </html>
