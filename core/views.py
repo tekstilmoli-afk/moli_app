@@ -46,6 +46,8 @@ from .models import Musteri
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Musteri
+from django.views.decorators.cache import never_cache
+
 
 from openpyxl import Workbook
 
@@ -264,15 +266,14 @@ def order_list(request):
     return response
 
 
-# ➕ Yeni Sipariş
 @login_required
+@never_cache
 def order_create(request):
     if request.method == "POST":
         form = OrderForm(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             order = form.save(commit=False)
 
-            # 🧮 Ürün koduna göre otomatik maliyet ata
             urun_kodu = form.cleaned_data.get("urun_kodu")
             if urun_kodu:
                 try:
@@ -284,21 +285,22 @@ def order_create(request):
                     order.maliyet_uygulanan = None
 
             order.save()
-
-            # ✅ Cache temizle ve tarayıcı önbelleğini aş
-            from django.core.cache import cache
             cache.clear()
             return redirect(f"{reverse('order_list')}?t={int(time.time())}")
-
     else:
         form = OrderForm(user=request.user)
 
     is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
 
+    # ✅ Modalda kullanmak için aktif müşteriler → GEREKLİ!
+    aktif_musteriler = Musteri.objects.filter(aktif=True).order_by("ad")
+
     return render(request, "core/order_form.html", {
         "form": form,
         "is_manager": is_manager,
+        "aktif_musteriler": aktif_musteriler,   # ← EKLENDİ
     })
+
 
 
 
@@ -508,6 +510,7 @@ def order_upload_image(request, pk):
     return redirect("order_detail", pk=order.pk)
 
 @login_required
+@never_cache
 def order_edit(request, pk):
     order = get_object_or_404(Order, pk=pk)
 
@@ -1417,44 +1420,8 @@ def musteri_pasif_yap_ajax(request):
     except Musteri.DoesNotExist:
         return JsonResponse({"success": False, "message": "Müşteri bulunamadı."})
 
-@csrf_exempt
-def musteri_pasif_yap_ajax(request):
-    if request.method == "POST":
-        musteri_id = request.POST.get("id")
 
-        if not musteri_id:
-            return JsonResponse({"success": False, "message": "Müşteri ID eksik."})
 
-        try:
-            musteri = Musteri.objects.get(pk=musteri_id)
-        except Musteri.DoesNotExist:
-            return JsonResponse({"success": False, "message": "Müşteri bulunamadı."})
 
-        musteri.aktif = False
-        musteri.save()
 
-        return JsonResponse({"success": True, "message": "Müşteri başarıyla pasif yapıldı."})
-
-    return JsonResponse({"success": False, "message": "Geçersiz istek."})
-
-def order_create(request):
-    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
-
-    # Yeni müşteri modalında göstermek için aktif müşteriler
-    aktif_musteriler = Musteri.objects.filter(aktif=True)
-
-    if request.method == "POST":
-        form = OrderForm(request.POST, request.FILES)
-        if form.is_valid():
-            order = form.save()
-            return redirect("order_detail", order.id)
-
-    else:
-        form = OrderForm()
-
-    return render(request, "core/order_form.html", {
-        "form": form,
-        "edit_mode": False,
-        "aktif_musteriler": aktif_musteriler,
-        "is_manager": is_manager,
-    })
+   
