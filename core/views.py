@@ -47,6 +47,9 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from core.models import Musteri
 from django.views.decorators.cache import never_cache
+from .models import OrderSeen
+import time
+
 
 
 from openpyxl import Workbook
@@ -134,11 +137,37 @@ from django.db import close_old_connections  # ⬅️ En üste import ekle
 @never_cache
 @login_required
 def order_list(request):
-    close_old_connections()  # ✅ Eski bağlantıları güvenli şekilde kapat
-    # 🔧 Her sorgudan önce bağlantıyı sıfırla (cache kalmasın)
+    close_old_connections()
     connections["default"].close()
 
-    # ✅ Türkçe açıklamalı durum sözlüğü
+    # -----------------------------------------
+    # 📌 1) TÜM SİPARİŞLERİ AL ve yeni/okunmamış hesapla
+    # -----------------------------------------
+    all_orders = Order.objects.only("id", "last_updated")
+
+    # Kullanıcının bu siparişleri en son ne zaman gördüğü
+    seen_map = {
+        s.order_id: s.seen_time
+        for s in OrderSeen.objects.filter(user=request.user)
+    }
+
+    # Yeni sipariş flag'leri (order.id → True/False)
+    new_flags = {}
+    for o in all_orders:
+        last_seen = seen_map.get(o.id)
+
+        if not last_seen:
+            new_flags[o.id] = True  # hiç görmediyse yeni
+        else:
+            new_flags[o.id] = o.last_updated > last_seen
+
+    # Kullanıcı bu listeyi şu an gördü (TEK KEZ)
+    request.user.userprofile.last_seen_orders = timezone.now()
+    request.user.userprofile.save(update_fields=["last_seen_orders"])
+
+    # -----------------------------------------
+    # 📌 2) TÜRKÇE DURUM SÖZLÜĞÜ
+    # -----------------------------------------
     STAGE_TRANSLATIONS = {
         ("dikim_durum", "sıraya_alındı"): "Dikime Alındı",
         ("susleme_durum", "sıraya_alındı"): "Süsleme Sırasına Alındı",
@@ -158,16 +187,18 @@ def order_list(request):
         ("sevkiyat_durum", "gonderildi"): "Sevkiyat Gönderildi",
     }
 
-
-    # ✅ Her siparişin son event’ini tek sorguda al (timestamp + id sıralaması)
-    # YENİ (ID her zaman artar → en güncel güvenli)
+    # -----------------------------------------
+    # 📌 3) EN SON EVENT
+    # -----------------------------------------
     latest_event = (
         OrderEvent.objects
         .filter(order=OuterRef("pk"))
-        .order_by("-id")[:1]  # ✅ sadece 1 kayıt dönsün, PostgreSQL hatası gider
+        .order_by("-id")[:1]
     )
 
-    # ✅ Ana sorgu
+    # -----------------------------------------
+    # 📌 4) ANA QUERY
+    # -----------------------------------------
     qs = (
         Order.objects.select_related("musteri")
         .only(
@@ -182,7 +213,9 @@ def order_list(request):
         .order_by("-id")
     )
 
-    # ✅ Filtreler
+    # -----------------------------------------
+    # 📌 5) FİLTRELER
+    # -----------------------------------------
     siparis_nolar = request.GET.getlist("siparis_no")
     musteriler = request.GET.getlist("musteri")
     urun_kodlari = request.GET.getlist("urun_kodu")
@@ -219,12 +252,18 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
-    # ✅ Sayfalama
+    # -----------------------------------------
+    # 📌 6) SAYFALAMA
+    # -----------------------------------------
     paginator = Paginator(qs, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    # ✅ Okunabilir son durum
+    # -----------------------------------------
+    # 📌 7) is_new FLAGİNİ PAGE_OBJ'E EKLE
+    # -----------------------------------------
     for order in page_obj:
+        order.is_new = new_flags.get(order.id, False)
+
         if order.latest_stage and order.latest_value:
             order.formatted_status = STAGE_TRANSLATIONS.get(
                 (order.latest_stage, order.latest_value),
@@ -233,30 +272,17 @@ def order_list(request):
         else:
             order.formatted_status = "-"
 
-    # ✅ Filtre seçenekleri
-    siparis_options = Order.objects.values_list("siparis_numarasi", flat=True).distinct()
-    musteri_options = Order.objects.values_list("musteri__ad", flat=True).distinct()
-    urun_options = Order.objects.values_list("urun_kodu", flat=True).distinct()
-    renk_options = Order.objects.values_list("renk", flat=True).distinct()
-    beden_options = Order.objects.values_list("beden", flat=True).distinct()
-    status_options = list(set(STAGE_TRANSLATIONS.values()))
-
+    # -----------------------------------------
+    # 📌 8) CONTEXT
+    # -----------------------------------------
     context = {
         "orders": page_obj,
-        "siparis_options": siparis_options,
-        "musteri_options": musteri_options,
-        "urun_options": urun_options,
-        "renk_options": renk_options,
-        "beden_options": beden_options,
-        "status_options": status_options,
-        "status_selected": status_filter,
-        "siparis_no_selected": siparis_nolar,
-        "musteri_selected": musteriler,
-        "urun_kodu_selected": urun_kodlari,
-        "renk_selected": renkler,
-        "beden_selected": bedenler,
-        "teslim_baslangic_selected": teslim_baslangic,
-        "teslim_bitis_selected": teslim_bitis,
+        "siparis_options": Order.objects.values_list("siparis_numarasi", flat=True).distinct(),
+        "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct(),
+        "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct(),
+        "renk_options": Order.objects.values_list("renk", flat=True).distinct(),
+        "beden_options": Order.objects.values_list("beden", flat=True).distinct(),
+        "status_options": list(set(STAGE_TRANSLATIONS.values())),
     }
 
     response = render(request, "core/order_list.html", context)
@@ -264,6 +290,8 @@ def order_list(request):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
+
 
 
 @login_required
@@ -331,60 +359,38 @@ def musteri_search(request):
 @login_required
 @never_cache
 def order_detail(request, pk):
+    # 📌 Önce siparişi çek
     order = get_object_or_404(Order.objects.select_related("musteri"), pk=pk)
+
+    # 👁️ Kullanıcı bu siparişi gördü olarak işaretle
+    OrderSeen.objects.update_or_create(
+        user=request.user,
+        order=order,
+        defaults={"seen_time": timezone.now()}
+    )
+
+    # 📌 Diğer veriler
     nakisciler = Nakisci.objects.all()
-    fasoncular = Fasoncu.objects.all()  # ✅ BUNU EKLEDİK
+    fasoncular = Fasoncu.objects.all()
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
+    update_events = events.filter(event_type="order_update")
+
 
     is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
 
     return render(
-        request,
-        "core/order_detail.html",
-        {
-            "order": order,
-            "nakisciler": nakisciler,
-            "fasoncular": fasoncular,  # ✅ BUNU DA EKLEDİK
-            "events": events,
-            "is_manager": is_manager,
-        },
-    )
+    request,
+    "core/order_detail.html",
+    {
+        "order": order,
+        "nakisciler": nakisciler,
+        "fasoncular": fasoncular,
+        "events": events,
+        "update_events": update_events,   # 📌 Eklenen satır
+        "is_manager": is_manager,
+    },
+)
 
-def stok_ekle(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
-
-    if request.method == "POST":
-        depo = request.POST.get("depo")
-        adet = int(request.POST.get("adet", 0))
-
-        if not depo or adet <= 0:
-            messages.error(request, "Lütfen depo ve adet bilgilerini doğru girin.")
-            return redirect("order_detail", pk=order.id)
-
-        # Stoğa kaydet
-        DepoStok.objects.create(
-            urun_kodu=order.urun_kodu,
-            renk=order.renk,
-            beden=order.beden,
-            adet=adet,
-            depo=depo,
-            aciklama=f"Stoğa Üretim: {order.siparis_numarasi}",
-            order=order
-        )
-
-        # Üretim geçmişine kayıt
-        OrderEvent.objects.create(
-            order=order,
-            user=request.user.username,
-            gorev="hazir",
-            stage="Depoya Aktarım",
-            value=f"{adet} adet stoğa eklendi ({depo})",
-            adet=adet,
-            timestamp=timezone.now(),
-        )
-
-        messages.success(request, f"✅ {adet} adet ürün {depo} deposuna eklendi.")
-        return redirect("order_detail", pk=order.id)
 
 @login_required
 def depo_ozet(request):
@@ -518,14 +524,58 @@ def order_edit(request, pk):
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
 
+    # 📌 Güncellemeden önce eski hali sakla (alan karşılaştırması için)
+    old_data = {
+        "musteri": str(order.musteri) if order.musteri else None,
+        "siparis_tipi": order.siparis_tipi,
+        "urun_kodu": order.urun_kodu,
+        "renk": order.renk,
+        "beden": order.beden,
+        "adet": order.adet,
+        "aciklama": order.aciklama,
+        "musteri_referans": order.musteri_referans,
+        "teslim_tarihi": order.teslim_tarihi,
+    }
+
     if request.method == "POST":
         form = OrderForm(request.POST, request.FILES, instance=order, user=request.user)
-        if form.is_valid():
-            order = form.save()
-            order.refresh_from_db()  # 🌀 Değişiklikleri anında yansıt
-            print(f"✅ [DEBUG] Güncellendi: {order.id} - {order.siparis_numarasi}")
 
-            # 🚀 Tarayıcı önbelleğini tamamen atlatmak için timestamp parametresi ekliyoruz
+        if form.is_valid():
+            updated_order = form.save()
+            updated_order.refresh_from_db()  # 🌀 Değişiklikleri anında getir
+
+            # 📌 Güncelleme sonrası yeni değerler
+            new_data = {
+                "musteri": str(updated_order.musteri) if updated_order.musteri else None,
+                "siparis_tipi": updated_order.siparis_tipi,
+                "urun_kodu": updated_order.urun_kodu,
+                "renk": updated_order.renk,
+                "beden": updated_order.beden,
+                "adet": updated_order.adet,
+                "aciklama": updated_order.aciklama,
+                "musteri_referans": updated_order.musteri_referans,
+                "teslim_tarihi": updated_order.teslim_tarihi,
+            }
+
+            # 📌  DEĞİŞİKLİK TESPİT ET VE LOG OLUŞTUR
+            for field, old_value in old_data.items():
+                new_value = new_data[field]
+
+                if str(old_value) != str(new_value):
+                    OrderEvent.objects.create(
+                        order=updated_order,
+                        user=request.user.username,
+                        gorev="yok",
+                        stage=field,
+                        value=f"{field} değişti",
+                        event_type="order_update",  # 🔥 çok önemli
+                        old_value=old_value,
+                        new_value=new_value,
+                    )
+
+            print(f"🔥 Sipariş güncelleme kayıtları kaydedildi → {updated_order.id}")
+
+            # 🚀 Sayfayı cache'ten okumaması için timestamp ekliyoruz
             return redirect(f"{reverse('order_detail', args=[pk])}?t={int(time.time())}")
 
     else:
@@ -539,6 +589,8 @@ def order_edit(request, pk):
         "edit_mode": True,
         "is_manager": is_manager,
     })
+
+
 
 
 
@@ -1421,7 +1473,117 @@ def musteri_pasif_yap_ajax(request):
         return JsonResponse({"success": False, "message": "Müşteri bulunamadı."})
 
 
+def stok_ekle(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+
+    if request.method == "POST":
+        depo = request.POST.get("depo")
+        adet = int(request.POST.get("adet", 0))
+
+        if not depo or adet <= 0:
+            messages.error(request, "Lütfen depo ve adet bilgilerini doğru girin.")
+            return redirect("order_detail", pk=order.id)
+
+        # Stoğa kaydet
+        DepoStok.objects.create(
+            urun_kodu=order.urun_kodu,
+            renk=order.renk,
+            beden=order.beden,
+            adet=adet,
+            depo=depo,
+            aciklama=f"Stoğa Üretim: {order.siparis_numarasi}",
+            order=order
+        )
+
+        # Üretim geçmişine kayıt
+        OrderEvent.objects.create(
+            order=order,
+            user=request.user.username,
+            gorev="hazir",
+            stage="Depoya Aktarım",
+            value=f"{adet} adet stoğa eklendi ({depo})",
+            adet=adet,
+            timestamp=timezone.now(),
+        )
+
+        messages.success(request, f"✅ {adet} adet ürün {depo} deposuna eklendi.")
+        return redirect("order_detail", pk=order.id)
+
+# 📌 DEĞİŞEN ALANLARI BULAN FONKSİYON
+def log_order_updates(request, old_obj, new_obj):
+    from .models import OrderEvent
+
+    changed = []
+
+    # 📌 Karşılaştırılacak alanlar
+    fields = [
+        "musteri", "siparis_tipi", "urun_kodu", "renk", "beden",
+        "adet", "siparis_tarihi", "teslim_tarihi",
+        "aciklama", "musteri_referans"
+    ]
+
+    for field in fields:
+        old_val = getattr(old_obj, field, None)
+        new_val = getattr(new_obj, field, None)
+
+        # FK ise adını yazsın
+        if hasattr(old_val, "ad"):
+            old_val = old_val.ad
+        if hasattr(new_val, "ad"):
+            new_val = new_val.ad
+
+        if old_val != new_val:
+            changed.append((field, old_val, new_val))
+
+    # 📦 Her değişiklik için OrderEvent oluştur
+    for field, old, new in changed:
+        OrderEvent.objects.create(
+            order=new_obj,
+            user=request.user.username,
+            gorev="yok",
+            event_type="order_update",
+            stage=f"{field}",
+            value=f"{field} değişti",
+            old_value=str(old),
+            new_value=str(new)
+        )
 
 
+# 📌 Sipariş düzenleme değişikliklerini loglayan fonksiyon
+def log_order_updates(request, old_obj, new_obj):
+    from .models import OrderEvent
 
-   
+    changed = []
+
+    # 📌 Takip edilecek alanlar
+    fields = [
+        "musteri", "siparis_tipi", "urun_kodu", "renk", "beden",
+        "adet", "siparis_tarihi", "teslim_tarihi",
+        "aciklama", "musteri_referans"
+    ]
+
+    for field in fields:
+        old_val = getattr(old_obj, field, None)
+        new_val = getattr(new_obj, field, None)
+
+        # Müşteri gibi FK alanları ad ile yazalım
+        if hasattr(old_val, "ad"):
+            old_val = old_val.ad
+        if hasattr(new_val, "ad"):
+            new_val = new_val.ad
+
+        if old_val != new_val:
+            changed.append((field, old_val, new_val))
+
+    # Her değişikliği OrderEvent olarak kaydet
+    for field, old, new in changed:
+        OrderEvent.objects.create(
+            order=new_obj,
+            user=request.user.username,
+            gorev="yok",
+            event_type="order_update",
+            stage=field,
+            value=f"{field} güncellendi",
+            old_value=str(old),
+            new_value=str(new)
+        )

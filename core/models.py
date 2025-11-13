@@ -9,7 +9,10 @@ import qrcode
 from io import BytesIO
 from supabase import create_client, Client
 from core.utils import upload_to_supabase
-
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -25,8 +28,12 @@ class UserProfile(models.Model):
         ("sevkiyat", "Sevkiyat"),
         ("nakis", "Nakış"),
     ]
+
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
     gorev = models.CharField(max_length=20, choices=GOREV_SECENEKLERI, default="yok")
+
+    # 👇 Bunu ekliyoruz!
+    last_seen_orders = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return f"{self.user.username} ({self.gorev})"
@@ -165,6 +172,8 @@ class Order(models.Model):
     maliyet_para_birimi = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="TRY")
     maliyet_override = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     ekstra_maliyet = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    last_updated = models.DateTimeField(auto_now=True)
+
 
 
     @property
@@ -332,25 +341,41 @@ class OrderEvent(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="events")
     user = models.CharField(max_length=100)
     gorev = models.CharField(max_length=20, choices=GOREV_SECENEKLERI, default="yok")
-    stage = models.CharField(max_length=50)
-    value = models.CharField(max_length=50)
+    stage = models.CharField(max_length=100)
+    value = models.CharField(max_length=200)
     adet = models.PositiveIntegerField(default=1)
     parca = models.CharField(max_length=100, blank=True, null=True)
     aciklama = models.TextField(blank=True, null=True)
     ortak_calisanlar = models.CharField(max_length=255, blank=True, null=True)
-    fasoncu = models.ForeignKey(Fasoncu, on_delete=models.SET_NULL, null=True, blank=True, related_name="event_fasonlari")
-    nakisci = models.ForeignKey(Nakisci, on_delete=models.SET_NULL, null=True, blank=True, related_name="event_nakisleri")
+    fasoncu = models.ForeignKey(Fasoncu, on_delete=models.SET_NULL, null=True, blank=True)
+    nakisci = models.ForeignKey(Nakisci, on_delete=models.SET_NULL, null=True, blank=True)
     timestamp = models.DateTimeField(default=timezone.now)
 
+    # 🆕 Sipariş düzenleme logları için
+    event_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("stage", "Aşama Güncellemesi"),
+            ("order_update", "Sipariş Güncellemesi"),
+        ],
+        default="stage"
+    )
+
+    old_value = models.TextField(blank=True, null=True)
+    new_value = models.TextField(blank=True, null=True)
+
     def __str__(self):
-        return f"{self.order} | {self.stage} → {self.value} ({self.user}, {self.gorev})"
+        return f"{self.order} | {self.stage} → {self.value} ({self.user})"
 
     class Meta:
         indexes = [
             models.Index(fields=["order"]),
             models.Index(fields=["user"]),
             models.Index(fields=["stage"]),
+            models.Index(fields=["event_type"]),
         ]
+
+
 
 # 🏬 DEPO STOK MODELİ
 class DepoStok(models.Model):
@@ -384,3 +409,13 @@ class UretimGecmisi(models.Model):
         return f"{self.urun} - {self.asama}"
 
 
+class OrderSeen(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    order = models.ForeignKey(Order, on_delete=models.CASCADE)
+    seen_time = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('user', 'order')
+
+    def __str__(self):
+        return f"{self.user} → {self.order}"

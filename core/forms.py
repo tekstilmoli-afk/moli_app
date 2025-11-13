@@ -27,8 +27,14 @@ class OrderForm(forms.ModelForm):
             "ekstra_maliyet",
         ]
         widgets = {
-            "siparis_tarihi": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "teslim_tarihi": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "siparis_tarihi": forms.DateInput(
+                attrs={"type": "date", "class": "form-control"},
+                format="%Y-%m-%d"
+            ),
+            "teslim_tarihi": forms.DateInput(
+                attrs={"type": "date", "class": "form-control"},
+                format="%Y-%m-%d"
+            ),
             "aciklama": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
             "urun_kodu": forms.TextInput(attrs={"class": "form-control"}),
             "renk": forms.TextInput(attrs={"class": "form-control"}),
@@ -48,19 +54,23 @@ class OrderForm(forms.ModelForm):
         user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
-        # 🧾 Müşteri listesini her seferinde dinamik olarak güncelle
-        from .models import Musteri
+        # 🧾 Yalnızca aktif müşterileri listede göster
         self.fields["musteri"].queryset = Musteri.objects.filter(aktif=True).order_by("ad")
 
+        # 📌 Düzenleme modunda tarihlerin inputlarda görünmesi
+        if self.instance and self.instance.pk:
+            if self.instance.siparis_tarihi:
+                self.fields["siparis_tarihi"].initial = self.instance.siparis_tarihi.strftime("%Y-%m-%d")
+            if self.instance.teslim_tarihi:
+                self.fields["teslim_tarihi"].initial = self.instance.teslim_tarihi.strftime("%Y-%m-%d")
 
-
-        # 🧍 Kullanıcıyı form içinde sakla (save'te erişebilmek için)
+        # 🧍 Kullanıcıyı sakla
         self.user = user
 
-        # 🔎 Kullanıcı gruplarını belirle
+        # 🔎 Kullanıcı grupları
         user_groups = [g.name.lower() for g in user.groups.all()] if user else []
 
-        # 🔒 Eğer kullanıcı patron veya müdür değilse bazı alanları gizle
+        # 🔒 Patron/müdür değilse maliyet & fiyat alanlarını gizle
         if user and not any(g in ["patron", "mudur"] for g in user_groups):
             hidden_fields = [
                 "satis_fiyati",
@@ -75,17 +85,13 @@ class OrderForm(forms.ModelForm):
                 if field in self.fields:
                     self.fields[field].widget = forms.HiddenInput()
 
-
-
-
     def save(self, commit=True):
         instance = super().save(commit=False)
 
-        print("🟡 [DEBUG] BEFORE SAVE → cleaned_data:", self.cleaned_data)
-
         user = getattr(self, 'user', None)
+
+        # Patron/müdür değilse gizli alanları dokunma — eski değerleri koru
         if user and not user.groups.filter(name__in=["patron", "mudur"]).exists():
-            # 👷‍♂️ Patron veya müdür değilse gizli alanları koru
             for field in [
                 "satis_fiyati",
                 "para_birimi",
@@ -99,11 +105,9 @@ class OrderForm(forms.ModelForm):
 
         if commit:
             instance.save()
-            # 🔧 ManyToMany alanları da kaydet (musteri gibi)
             if hasattr(self, "save_m2m"):
                 self.save_m2m()
 
-        print("🟢 [DEBUG] AFTER SAVE →", instance.satis_fiyati, instance.maliyet_uygulanan)
         return instance
 
 

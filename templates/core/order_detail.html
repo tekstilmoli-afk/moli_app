@@ -261,6 +261,43 @@
 </form>
 {% endif %}
 
+<!-- 🔴 SİPARİŞ DÜZENLEME GEÇMİŞİ -->
+<div class="card border-danger mt-4" style="max-width: 650px; margin: 0 auto;">
+    <div class="card-header bg-danger text-white fw-bold">
+        ⚠️ Sipariş Düzenleme Kayıtları
+    </div>
+    <div class="card-body">
+
+        {% if update_events %}
+            <ul class="list-group">
+                {% for ev in update_events %}
+                    <li class="list-group-item">
+                        <strong>{{ ev.stage|title }}</strong> alanı değişti:
+
+                        <br>
+                        <small class="text-muted">Önce:</small>
+                        <span class="text-decoration-line-through text-muted">{{ ev.old_value|default:"—" }}</span>
+
+                        <br>
+                        <small class="text-muted">Sonra:</small>
+                        <span class="fw-bold text-danger">{{ ev.new_value }}</span>
+
+                        <br>
+                        <small class="text-muted">
+                            {{ ev.timestamp|date:"d.m.Y H:i" }} — {{ ev.user }}
+                        </small>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="text-muted fst-italic">
+                Bu siparişte henüz düzenleme yapılmamış.
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
 
 
 <!-- 🔍 Gelişmiş Görsel Önizleme -->
