@@ -50,7 +50,9 @@ class OrderForm(forms.ModelForm):
 
         # 🧾 Müşteri listesini her seferinde dinamik olarak güncelle
         from .models import Musteri
-        self.fields["musteri"].queryset = Musteri.objects.order_by("ad")
+        self.fields["musteri"].queryset = Musteri.objects.filter(aktif=True).order_by("ad")
+
+
 
         # 🧍 Kullanıcıyı form içinde sakla (save'te erişebilmek için)
         self.user = user

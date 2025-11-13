@@ -64,6 +64,7 @@ class ProductCost(models.Model):
 
 class Musteri(models.Model):
     ad = models.CharField(max_length=200, db_index=True)
+    aktif = models.BooleanField(default=True)   # 👈 EKLENDİ!
 
     def __str__(self):
         return self.ad

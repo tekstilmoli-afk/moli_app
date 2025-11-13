@@ -39,6 +39,13 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from .models import Musteri
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
+from .models import Musteri
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from core.models import Musteri
 
 from openpyxl import Workbook
 
@@ -1387,4 +1394,67 @@ def ajax_musteri_ekle(request):
         "success": True,
         "id": musteri.id,
         "ad": musteri.ad
+    })
+
+@require_POST
+def musteri_pasif_yap_ajax(request):
+    musteri_id = request.POST.get("id")
+
+    if not musteri_id:
+        return JsonResponse({"success": False, "message": "Müşteri ID bulunamadı."})
+
+    try:
+        musteri = Musteri.objects.get(id=musteri_id)
+        musteri.aktif = False
+        musteri.save()
+
+        return JsonResponse({
+            "success": True,
+            "message": "Müşteri pasif yapıldı.",
+            "id": musteri.id
+        })
+
+    except Musteri.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Müşteri bulunamadı."})
+
+@csrf_exempt
+def musteri_pasif_yap_ajax(request):
+    if request.method == "POST":
+        musteri_id = request.POST.get("id")
+
+        if not musteri_id:
+            return JsonResponse({"success": False, "message": "Müşteri ID eksik."})
+
+        try:
+            musteri = Musteri.objects.get(pk=musteri_id)
+        except Musteri.DoesNotExist:
+            return JsonResponse({"success": False, "message": "Müşteri bulunamadı."})
+
+        musteri.aktif = False
+        musteri.save()
+
+        return JsonResponse({"success": True, "message": "Müşteri başarıyla pasif yapıldı."})
+
+    return JsonResponse({"success": False, "message": "Geçersiz istek."})
+
+def order_create(request):
+    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+
+    # Yeni müşteri modalında göstermek için aktif müşteriler
+    aktif_musteriler = Musteri.objects.filter(aktif=True)
+
+    if request.method == "POST":
+        form = OrderForm(request.POST, request.FILES)
+        if form.is_valid():
+            order = form.save()
+            return redirect("order_detail", order.id)
+
+    else:
+        form = OrderForm()
+
+    return render(request, "core/order_form.html", {
+        "form": form,
+        "edit_mode": False,
+        "aktif_musteriler": aktif_musteriler,
+        "is_manager": is_manager,
     })

@@ -43,6 +43,9 @@ urlpatterns = [
     # AJAX müşteri ekleme
     path("ajax/musteri/ekle/", views.ajax_musteri_ekle, name="ajax_musteri_ekle"),
 
+    path("ajax/musteri/pasif-yap/", views.musteri_pasif_yap_ajax, name="musteri_pasif_yap_ajax"),
+
+
 
 
     # 👥 Kullanıcı Yönetimi
