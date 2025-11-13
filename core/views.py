@@ -36,6 +36,9 @@ from django.shortcuts import render
 from .models import DepoStok, Order
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from .models import Musteri
 
 from openpyxl import Workbook
 
@@ -419,8 +422,6 @@ def custom_login(request):
 @login_required
 def update_stage(request, pk):
     order = get_object_or_404(Order, pk=pk)
-
-    # 📌 Stage ve value bilgisi (zorunlu)
     stage = request.GET.get("stage") or request.POST.get("stage")
     value = request.GET.get("value") or request.POST.get("value")
     is_production_count = request.GET.get("is_production_count") or request.POST.get("is_production_count")
@@ -428,24 +429,20 @@ def update_stage(request, pk):
     if not stage or not value:
         return HttpResponseForbidden("Eksik veri")
 
-    # 📌 Diğer alanlar (opsiyonel)
     aciklama = request.GET.get("aciklama") or request.POST.get("aciklama") or ""
     parca = request.GET.get("parca") or request.POST.get("parca") or ""
     adet_raw = request.GET.get("adet") or request.POST.get("adet")
     fasoncu_id = request.GET.get("fasoncu") or request.POST.get("fasoncu")
 
-    # 📌 Adet boşsa 1 kabul edilir
     try:
         adet = int(adet_raw) if adet_raw else 1
     except:
         adet = 1
 
-    # 📌 Kullanıcı ve görev bilgileri
     username = request.user.username
     gorev = getattr(request.user.userprofile, "gorev", "yok")
     now = timezone.now()
 
-    # 📌 Eğer bu bir ProductionCount isteğiyse, farklı tabloya kaydet
     if is_production_count == "1":
         ProductionCount.objects.create(
             order=order,
@@ -454,9 +451,8 @@ def update_stage(request, pk):
             user=username,
             timestamp=now
         )
-        return HttpResponse("OK")  # Eski panel yenilenmez
+        return HttpResponse("OK")
 
-    # ✅ Fasoncu veya Nakışçı bilgisi varsa çek
     fasoncu = None
     nakisci = None
     if fasoncu_id:
@@ -465,7 +461,6 @@ def update_stage(request, pk):
         else:
             fasoncu = Fasoncu.objects.filter(id=fasoncu_id).first()
 
-    # ✅ Normal süreç kaydı (OrderEvent)
     OrderEvent.objects.create(
         order=order,
         user=username,
@@ -480,11 +475,17 @@ def update_stage(request, pk):
         timestamp=now,
     )
 
-    # 📌 Güncellenmiş paneli yeniden yükle
+        # ✅ Üretim aşaması değiştiğinde depodan düşür
+    from core.models import DepoStok
+    silinen = DepoStok.objects.filter(order=order).delete()
+    print(f"🧹 DEPO TEMİZLİK: {order.id} için {silinen[0]} kayıt silindi.")
+
+
     order.refresh_from_db()
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
     html = render_to_string("core/_uretim_paneli.html", {"order": order, "events": events})
     return HttpResponse(html)
+
 
 
 
@@ -1222,7 +1223,13 @@ def depo_detay(request, depo_adi):
         "siparisler": siparisler,
     }
 
-    return render(request, "depolar/detay.html", context)
+    # 🚫 Tarayıcı ve proxy önbelleğini kapat (sayfa hep güncel görünsün)
+    response = render(request, "depolar/detay.html", context)
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
+
 
 
 
@@ -1308,6 +1315,10 @@ def hazirdan_ver(request, stok_id):
         stok.adet = max(0, stok.adet - 1)
         stok.order = order
         stok.save()
+      
+        # 🔹 Ürün başka siparişe geçtiğinde, eski depodan düşür
+        DepoStok.objects.filter(order=order).exclude(id=stok.id).delete()
+
 
         # 🔹 Üretim geçmişine kayıt
         UretimGecmisi.objects.create(
@@ -1338,3 +1349,42 @@ def cikti_alindi(request, pk):
     order.save()
     messages.success(request, f"{order.siparis_numarasi} siparişinin çıktısı alındı olarak işaretlendi.")
     return redirect("order_list")
+
+# AJAX ile müşteri ekleme
+@login_required
+def musteri_create_ajax(request):
+    if request.method == "POST":
+        ad = request.POST.get("ad", "").strip()
+        telefon = request.POST.get("telefon", "").strip()
+
+        if not ad:
+            return JsonResponse({"success": False, "message": "Müşteri adı zorunludur."})
+
+        m = Musteri.objects.create(ad=ad, telefon=telefon)
+
+        return JsonResponse({
+            "success": True,
+            "id": m.id,
+            "ad": m.ad
+        })
+
+    return JsonResponse({"success": False, "message": "Geçersiz istek"})
+
+@csrf_exempt
+def ajax_musteri_ekle(request):
+    if request.method != "POST":
+        return JsonResponse({"success": False, "message": "Geçersiz istek yöntemi."})
+
+    ad = request.POST.get("ad", "").strip()
+
+    if not ad:
+        return JsonResponse({"success": False, "message": "Müşteri adı boş olamaz."})
+
+    # Müşteri oluştur
+    musteri = Musteri.objects.create(ad=ad)
+
+    return JsonResponse({
+        "success": True,
+        "id": musteri.id,
+        "ad": musteri.ad
+    })

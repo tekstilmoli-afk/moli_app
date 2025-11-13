@@ -40,6 +40,11 @@ urlpatterns = [
     # 👤 Müşteri işlemleri
     path("musteri/new/", views.musteri_create, name="musteri_create"),
 
+    # AJAX müşteri ekleme
+    path("ajax/musteri/ekle/", views.ajax_musteri_ekle, name="ajax_musteri_ekle"),
+
+
+
     # 👥 Kullanıcı Yönetimi
     path("users/", views.user_management_view, name="user_management"),
 
@@ -63,6 +68,8 @@ urlpatterns = [
     # 🤖 Asistan
     path("asistan/", views.ai_assistant_view, name="ai_assistant"),
     path("api/assistant/", views.ai_assistant_api, name="ai_assistant_api"),
+    
+    
 
     # 🧶 Fasoncu / Nakışçı
     path("fasoncu/yeni/", views.fasoncu_yeni, name="fasoncu_yeni"),

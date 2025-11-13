@@ -65,7 +65,6 @@
         <div class="d-flex gap-2">
             {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
                 <a href="{% url 'order_create' %}" class="btn btn-success btn-sm">🟢 Yeni Sipariş Ekle</a>
-                <a href="{% url 'musteri_create' %}" class="btn btn-primary btn-sm">👤 Müşteri Ekle</a>
             {% endif %}
             <a href="/" class="btn btn-outline-secondary btn-sm">Ana Sayfa</a>
         </div>
