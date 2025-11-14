@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Bildirimler{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3>🔔 Bildirimler</h3>
+    <hr>
+
+    <ul class="list-group">
+        {% for n in notifications %}
+            <li class="list-group-item d-flex justify-content-between {% if not n.is_read %}fw-bold{% endif %}">
+                <div>
+                    <div>{{ n.title }}</div>
+                    <small class="text-muted">{{ n.timestamp|date:"d.m.Y H:i" }}</small>
+                </div>
+
+                <a href="{% url 'notification_read' n.id %}" class="btn btn-sm btn-outline-primary">
+                    Gör
+                </a>
+            </li>
+        {% empty %}
+            <li class="list-group-item text-muted">
+                Henüz bildirim yok.
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

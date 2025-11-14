@@ -4,19 +4,80 @@
   <meta charset="UTF-8">
   <title>{% block title %}MoliApp{% endblock %}</title>
 
-  <!-- ✅ Bootstrap ana CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  {% block extra_css %}{% endblock %}
+  {% block extra_css %}
+  <style>
+    .qr-img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+    }
+  </style>
+  {% endblock %}
 </head>
 
 <body>
-  {% block content %}{% endblock %}
 
-  <!-- ✅ JS Sırası -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- 🔥 NAVBAR BAŞLIYOR -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm mb-4">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
 
-  {% block extra_js %}{% endblock %}
+    <!-- Logo -->
+    <a class="navbar-brand fw-bold" href="{% url 'order_list' %}">
+      MOLİ APP
+    </a>
+
+    {% if user.is_authenticated %}
+    <div class="d-flex align-items-center">
+
+      <!-- 🔔 Bildirimler (istersen açabilirsin) -->
+      <div class="dropdown me-3">
+        <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
+  🔔 Bildirimler{% if unread_notification_count > 0 %}(
+    <span class="text-danger fw-bold">{{ unread_notification_count }}</span>
+  ){% endif %}
+</button>
+
+
+        <ul class="dropdown-menu dropdown-menu-end" style="width: 320px; max-height: 400px; overflow-y: auto;">
+          <li class="dropdown-header fw-bold">Bildirimler</li>
+
+          {% for n in all_notifications|slice:":10" %}
+          <li>
+            <a href="{% url 'notification_read' n.id %}"
+               class="dropdown-item small {% if not n.is_read %}fw-bold{% endif %}">
+              {{ n.title }}<br>
+              <small class="text-muted">{{ n.timestamp|date:"d.m.Y H:i" }}</small>
+            </a>
+          </li>
+          {% empty %}
+          <li><span class="dropdown-item text-muted">Henüz bildirim yok.</span></li>
+          {% endfor %}
+
+          <li><hr class="dropdown-divider"></li>
+          <li><a href="{% url 'notification_list' %}" class="dropdown-item text-center">Tümünü Gör</a></li>
+        </ul>
+      </div>
+  
+
+      <!-- Kullanıcı -->
+      <span class="me-3">👤 {{ user.username }}</span>
+      <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Çıkış Yap</a>
+
+    </div>
+    {% endif %}
+
+  </div>
+</nav>
+<!-- 🔥 NAVBAR BİTİYOR -->
+
+<!-- ANA İÇERİK -->
+{% block content %}{% endblock %}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+{% block extra_js %}{% endblock %}
 </body>
 </html>

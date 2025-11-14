@@ -5,12 +5,18 @@ from django.conf.urls.static import static
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from core import views  # 👈 sadece core.views yeterli
+from core.views import notification_list
+from django.urls import path
+from django.contrib import admin
+from django.urls import path, include
+
+
+
 
 # 👇 GET isteğini de destekleyen logout fonksiyonu
 def logout_view(request):
     logout(request)
     return redirect('/login/')
-
 urlpatterns = [
     # 🧭 Admin paneli
     path("admin/", admin.site.urls),
@@ -31,7 +37,7 @@ urlpatterns = [
     path("order/<int:pk>/", views.order_detail, name="order_detail"),
     path("order/<int:pk>/edit/", views.order_edit, name="order_edit"),
     path("orders/<int:pk>/update/", views.update_stage, name="update_stage"),
-    path("orders/<int:pk>/delete/", views.order_delete, name="order_delete"),
+    path("order/<int:pk>/delete/", views.order_delete, name="order_delete"),
     path("orders/<int:pk>/upload-image/", views.order_upload_image, name="order_upload_image"),
     path("orders/<int:pk>/add-image/", views.order_add_image, name="order_add_image"),
     path("images/<int:image_id>/delete/", views.delete_order_image, name="delete_order_image"),
@@ -72,7 +78,13 @@ urlpatterns = [
     path("asistan/", views.ai_assistant_view, name="ai_assistant"),
     path("api/assistant/", views.ai_assistant_api, name="ai_assistant_api"),
     
+    path("notifications/", notification_list, name="notification_list"),
+
+    path("bildirimler/", views.notification_list, name="notification_list"),
+    path("bildirim/<int:pk>/", views.notification_read, name="notification_read"),
     
+    path("bildirim-okundu/<int:pk>/", views.mark_notification_read, name="mark_notification_read"),
+
 
     # 🧶 Fasoncu / Nakışçı
     path("fasoncu/yeni/", views.fasoncu_yeni, name="fasoncu_yeni"),
@@ -92,3 +104,8 @@ urlpatterns = [
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+from core.views import notification_list, mark_notification_read
+
+path("notifications/", notification_list, name="notification_list"),
+path("notifications/read/<int:pk>/", mark_notification_read, name="mark_notification_read"),

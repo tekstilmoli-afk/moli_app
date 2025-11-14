@@ -49,6 +49,8 @@ from core.models import Musteri
 from django.views.decorators.cache import never_cache
 from .models import OrderSeen
 import time
+from django.contrib.auth import get_user_model
+from .models import Notification
 
 
 
@@ -518,6 +520,9 @@ def order_upload_image(request, pk):
 @login_required
 @never_cache
 def order_edit(request, pk):
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
     order = get_object_or_404(Order, pk=pk)
 
     # 🛡️ Yetki kontrolü
@@ -558,6 +563,8 @@ def order_edit(request, pk):
             }
 
             # 📌  DEĞİŞİKLİK TESPİT ET VE LOG OLUŞTUR
+            changed_fields = []   # 🔴 EKLEDİK
+
             for field, old_value in old_data.items():
                 new_value = new_data[field]
 
@@ -568,14 +575,52 @@ def order_edit(request, pk):
                         gorev="yok",
                         stage=field,
                         value=f"{field} değişti",
-                        event_type="order_update",  # 🔥 çok önemli
+                        event_type="order_update",
                         old_value=old_value,
                         new_value=new_value,
                     )
+                    changed_fields.append(field)  # 🔴 EKLEDİK
 
             print(f"🔥 Sipariş güncelleme kayıtları kaydedildi → {updated_order.id}")
 
-            # 🚀 Sayfayı cache'ten okumaması için timestamp ekliyoruz
+            # 🛎️ BİLDİRİM OLUŞTUR (değişiklik varsa)
+            if changed_fields:
+                from .models import Notification  # 🔴 EKLENDİ
+
+                alan_etiketleri = {
+                    "musteri": "Müşteri",
+                    "siparis_tipi": "Sipariş Tipi",
+                    "urun_kodu": "Ürün Kodu",
+                    "renk": "Renk",
+                    "beden": "Beden",
+                    "adet": "Adet",
+                    "aciklama": "Açıklama",
+                    "musteri_referans": "Müşteri Ref",
+                    "teslim_tarihi": "Teslim Tarihi",
+                }
+
+                okunur_alanlar = [alan_etiketleri.get(f, f) for f in changed_fields]
+                degisen_text = ", ".join(okunur_alanlar)
+
+                title = f"{updated_order.siparis_numarasi} güncellendi"
+                message = f"Değişen alanlar: {degisen_text}. Güncelleyen: {request.user.username}"
+
+                all_users = User.objects.all()
+                notif_list = []
+
+                for u in all_users:
+                    notif_list.append(Notification(
+                        user=u,
+                        order=updated_order,
+                        title=title,
+                        message=message,
+                    ))
+
+                Notification.objects.bulk_create(notif_list)
+
+                print(f"🛎️ Tüm kullanıcılara ({len(notif_list)}) bildirim gönderildi.")
+
+            # 🚀 Sayfayı cache'ten okumaması için
             return redirect(f"{reverse('order_detail', args=[pk])}?t={int(time.time())}")
 
     else:
@@ -589,6 +634,7 @@ def order_edit(request, pk):
         "edit_mode": True,
         "is_manager": is_manager,
     })
+
 
 
 
@@ -1587,3 +1633,49 @@ def log_order_updates(request, old_obj, new_obj):
             old_value=str(old),
             new_value=str(new)
         )
+
+
+@login_required
+def notification_read(request, pk):
+    notif = get_object_or_404(Notification, pk=pk, user=request.user)
+    notif.is_read = True
+    notif.save()
+
+    # Sipariş varsa sipariş detayına yönlendir
+    if notif.order:
+        return redirect("order_detail", pk=notif.order.id)
+
+    # Sipariş yoksa bildirim listesine dön
+    return redirect("notification_list")
+
+@login_required
+def notification_list(request):
+    notifications = Notification.objects.filter(user=request.user).order_by("-timestamp")
+    return render(request, "core/notification_list.html", {"notifications": notifications})
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
+
+from .models import Notification
+
+@login_required
+def notification_list(request):
+    notifications = Notification.objects.filter(user=request.user).order_by('-timestamp')
+    return render(request, "notifications/list.html", {"notifications": notifications})
+
+
+from django.shortcuts import get_object_or_404, redirect
+from .models import Notification
+
+@login_required
+def mark_notification_read(request, pk):
+    notif = get_object_or_404(Notification, pk=pk, user=request.user)
+    notif.is_read = True
+    notif.save()
+
+    # Eğer bildirim siparişe bağlıysa sipariş detayına yönlendir
+    if notif.order:
+        return redirect("order_detail", pk=notif.order.id)
+
+    # Değilse bildirim listesine dön
+    return redirect("notification_list")

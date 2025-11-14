@@ -64,10 +64,15 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+
+                # 🔔 Bildirimler için context processor
+                'core.context_processors.notifications',
+
             ],
         },
     },
 ]
+
 
 DATABASE_URL = os.getenv('DATABASE_URL')
 
@@ -174,3 +179,5 @@ BASE_URL = os.getenv('BASE_URL', 'https://moli-app.onrender.com')
 
 # 🔑 Gemini API anahtarı
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+"core.context_processors.notifications",
