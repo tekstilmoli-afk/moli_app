@@ -113,28 +113,56 @@
                     </td>
 
                     <td class="text-end">
-                        <div class="d-flex justify-content-end gap-2 flex-wrap">
-                            <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">Görüntüle</a>
+    <div class="d-flex justify-content-end gap-2">
 
-                            {% if order.cikti_alindi %}
-                                <span class="badge bg-success">📄 Yazdırıldı</span>
-                            {% else %}
-                                <form method="post" action="{% url 'cikti_alindi' order.id %}">
-                                    {% csrf_token %}
-                                    <button class="btn btn-outline-success btn-sm">
-                                        📄 Yazdırıldı Olarak İşaretle
-                                    </button>
-                                </form>
-                            {% endif %}
+        <!-- GÖRÜNTÜLE (Sabit, Büyük) -->
+        <a href="{% url 'order_detail' order.id %}" class="btn btn-primary btn-sm">
+            Görüntüle
+        </a>
 
-                            {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
-                                <button class="btn btn-sm btn-danger"
-                                        onclick="deleteOrderInstant(this, '{{ order.id }}')">
-                                    🗑️ Sil
-                                </button>
-                            {% endif %}
-                        </div>
-                    </td>
+        <!-- ÜÇ NOKTA MENÜ -->
+        <div class="dropdown">
+            <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                ⋮
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+
+                <!-- Yazdırıldı Bilgisi -->
+                {% if order.cikti_alindi %}
+                    <li>
+                        <span class="dropdown-item text-success">
+                            ✔ Yazdırıldı
+                        </span>
+                    </li>
+                {% else %}
+                    <li>
+                        <form method="post" action="{% url 'cikti_alindi' order.id %}">
+                            {% csrf_token %}
+                            <button class="dropdown-item">
+                                📄 Yazdırıldı Olarak İşaretle
+                            </button>
+                        </form>
+                    </li>
+                {% endif %}
+
+                <!-- Silme İşlemi -->
+                {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button class="dropdown-item text-danger"
+                                onclick="deleteOrderInstant(this, '{{ order.id }}')">
+                            🗑️ Sil
+                        </button>
+                    </li>
+                {% endif %}
+
+            </ul>
+        </div>
+
+    </div>
+</td>
+
 
                 </tr>
                 {% empty %}
