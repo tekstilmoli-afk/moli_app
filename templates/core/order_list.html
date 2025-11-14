@@ -182,27 +182,68 @@
 
 {% block extra_js %}
 <script>
-function deleteOrderInstant(button, orderId) {
+function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, musteriRef) {
 
-    if (!confirm("Bu siparişi silmek istediğine emin misin?")) {
-        return;
-    }
+    let content = `
+    <html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 5px;
+            }
+            .label-container {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 0;
+            }
+            .qr-box img {
+                width: 120px;
+                height: 120px;
+            }
+            .info-box {
+                font-size: 12px;
+                line-height: 1.1;
+                max-width: 180px;
+            }
+            .info-box strong {
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
 
-    fetch(`/order/${orderId}/delete/`, {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
-        }
-    })
-    .then(response => {
-        if (response.ok) {
-            // satırı tablodan kaldır
-            let row = button.closest("tr");
-            row.remove();
-        } else {
-            alert("Silme işleminde hata oluştu!");
-        }
-    });
+        <div class="label-container">
+
+            <div class="qr-box">
+                <img src="${qrUrl}">
+            </div>
+
+            <div class="info-box">
+                <strong>${siparisNo}</strong><br>
+                ${tip || ""}<br>
+                ${musteri || ""}<br>
+                ${urunKodu} - ${renk} - ${beden}<br>
+                ${musteriRef ? "(" + musteriRef + ")" : ""}
+            </div>
+
+        </div>
+
+        <script>
+            window.onload = function() {
+                window.print();
+            }
+        <\/script>
+
+    </body>
+    </html>
+    `;
+
+    let printWindow = window.open("", "_blank", "width=350,height=250");
+    printWindow.document.write(content);
+    printWindow.document.close();
 }
 </script>
+
 {% endblock %}
