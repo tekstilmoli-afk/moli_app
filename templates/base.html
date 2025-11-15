@@ -2,67 +2,136 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <!-- 📱 Mobil tam ekran için gerekli -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}MoliApp{% endblock %}</title>
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  {% block extra_css %}
+{% block extra_css %}
 <style>
+
+/* ——————————————————————————
+   🔥 NAVBAR (HER EKRANDA YAN YANA)
+—————————————————————————— */
+.navbar .d-flex.align-items-center {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 12px !important;
+    flex-wrap: nowrap !important;
+}
+.navbar .d-flex.align-items-center > * {
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+}
+
+
+/* ——————————————————————————
+   📱 MOBİL GÖRÜNÜM
+—————————————————————————— */
+@media (max-width: 768px) {
+
+    /* Bildirim butonu */
+    .navbar .dropdown-toggle {
+        font-size: 12px !important;
+        padding: 2px 6px !important;
+    }
+
+    /* Kullanıcı adı */
+    .navbar span.me-3 {
+        font-size: 13px !important;
+    }
+
+    /* Çıkış */
+    .navbar .btn-outline-danger {
+        padding: 2px 8px !important;
+        font-size: 12px !important;
+    }
+
+    /* TABLO GENEL */
+    table {
+        table-layout: fixed !important;
+        width: 100% !important;
+    }
+
+    th, td {
+        font-size: 10px !important;
+        padding: 3px !important;
+        text-align: center !important;
+        white-space: normal !important;
+        word-wrap: break-word !important;
+    }
+
+    /* Mobilde gizlenen sütunlar */
+    th:nth-child(4), td:nth-child(4) { display: none !important; }  /* Adet */
+    th:nth-child(9), td:nth-child(9) { display: none !important; }  /* QR */
+    th:nth-child(10), td:nth-child(10){ display: none !important; } /* Etiket */
+
+    /* Son durum taşmasın */
+    th:nth-child(8), td:nth-child(8) {
+        min-width: 70px !important;
+        max-width: 70px !important;
+        white-space: normal !important;
+    }
+
+    /* Detay butonu sütunu */
+    th:nth-child(11), td:nth-child(11) {
+        min-width: 80px !important;
+        max-width: 80px !important;
+    }
+
+    /* MOBİLDE TABLO YATAY KAYDIRILABİLİR OLSUN */
+@media (max-width: 768px) {
+    .table-responsive-mobile {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        display: block !important;
+        width: 100% !important;
+    }
+}
+
+
+    /* Görüntüle butonu */
+    .btn-primary.btn-sm {
+        font-size: 9px !important;
+        padding: 1px 3px !important;
+        min-width: 40px !important;
+    }
+
+    /* 3 nokta menüsü */
+    .dropdown-toggle {
+        padding: 1px 3px !important;
+        width: 22px !important;
+    }
+
+    /* Küçük QR */
     .qr-img {
-        width: 50px;
-        height: 50px;
-        object-fit: cover;
+        width: 28px !important;
+        height: 28px !important;
     }
+}
 
-    /* 📱 Mobil: tablo kaydırmasız ve düzgün görünsün */
-    @media (max-width: 768px) {
 
-        .table {
-            table-layout: fixed !important;
-            width: 100% !important;
-            font-size: 12px;
-        }
+/* ——————————————————————————
+   💻 MASAÜSTÜ QR
+—————————————————————————— */
+.qr-img {
+    width: 60px;
+    height: 60px;
+}
 
-        th, td {
-            white-space: normal !important;
-            word-wrap: break-word !important;
-            font-size: 11px !important;
-            padding: 4px !important;
-        }
-
-        /* Başlıkları düzelt */
-        th {
-            font-size: 10px !important;
-            white-space: normal !important;
-            text-align: center !important;
-        }
-
-        .qr-img {
-            width: 35px !important;
-            height: 35px !important;
-        }
-
-        .btn-sm {
-            padding: 2px 6px !important;
-            font-size: 11px !important;
-        }
-    }
 </style>
 {% endblock %}
-
-
 
 </head>
 
 <body>
 
-<!-- 🔥 NAVBAR BAŞLIYOR -->
 <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm mb-4">
   <div class="container-fluid d-flex justify-content-between align-items-center">
 
-    <!-- Logo -->
     <a class="navbar-brand fw-bold" href="{% url 'order_list' %}">
       MOLİ APP
     </a>
@@ -70,16 +139,14 @@
     {% if user.is_authenticated %}
     <div class="d-flex align-items-center">
 
-      <!-- 🔔 Bildirimler (istersen açabilirsin) -->
       <div class="dropdown me-3">
         <button class="btn btn-light dropdown-toggle" data-bs-toggle="dropdown">
-  🔔 Bildirimler{% if unread_notification_count > 0 %}(
-    <span class="text-danger fw-bold">{{ unread_notification_count }}</span>
-  ){% endif %}
-</button>
+          🔔 Bildirimler{% if unread_notification_count > 0 %}(
+            <span class="text-danger fw-bold">{{ unread_notification_count }}</span>
+          ){% endif %}
+        </button>
 
-
-        <ul class="dropdown-menu dropdown-menu-end" style="width: 320px; max-height: 400px; overflow-y: auto;">
+        <ul class="dropdown-menu dropdown-menu-end" style="width:320px;max-height:400px;overflow-y:auto;">
           <li class="dropdown-header fw-bold">Bildirimler</li>
 
           {% for n in all_notifications|slice:":10" %}
@@ -98,9 +165,7 @@
           <li><a href="{% url 'notification_list' %}" class="dropdown-item text-center">Tümünü Gör</a></li>
         </ul>
       </div>
-  
 
-      <!-- Kullanıcı -->
       <span class="me-3">👤 {{ user.username }}</span>
       <a href="{% url 'logout' %}" class="btn btn-outline-danger btn-sm">Çıkış Yap</a>
 
@@ -109,14 +174,9 @@
 
   </div>
 </nav>
-<!-- 🔥 NAVBAR BİTİYOR -->
 
-<!-- ANA İÇERİK -->
 {% block content %}{% endblock %}
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-{% block extra_js %}{% endblock %}
 </body>
 </html>
