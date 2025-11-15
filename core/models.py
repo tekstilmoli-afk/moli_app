@@ -404,6 +404,13 @@ class DepoStok(models.Model):
         return f"{self.urun_kodu} - {self.renk}/{self.beden} ({self.depo}) [{self.adet} adet]"
 
 class UretimGecmisi(models.Model):
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="uretim_kayitlari"
+    )
     urun = models.CharField(max_length=100)
     asama = models.CharField(max_length=100)
     aciklama = models.TextField(blank=True, null=True)
@@ -411,6 +418,8 @@ class UretimGecmisi(models.Model):
 
     def __str__(self):
         return f"{self.urun} - {self.asama}"
+
+
 
 class Notification(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notification_set")

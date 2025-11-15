@@ -461,6 +461,33 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         {% endif %}
 
+        {% if uretim_kayitlari %}
+<hr class="mt-4">
+<h5 class="mt-3">📦 Depo / Hazır Üretim Hareketleri</h5>
+
+<table class="table table-sm table-bordered bg-white">
+    <thead>
+        <tr>
+            <th>Tarih</th>
+            <th>Ürün</th>
+            <th>Aşama</th>
+            <th>Açıklama</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for k in uretim_kayitlari %}
+        <tr>
+            <td>{{ k.tarih|date:"d.m.Y H:i" }}</td>
+            <td>{{ k.urun }}</td>
+            <td>{{ k.asama }}</td>
+            <td>{{ k.aciklama }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+
         <!-- 🧵 Üretim Paneli -->
         <div class="mt-4 no-print" id="uretim-paneli">
             {% include "core/_uretim_paneli.html" with order=order events=events %}

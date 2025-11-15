@@ -97,7 +97,7 @@ urlpatterns = [
     path("depolar/arama/", views.depo_arama, name="depo_arama"),
     path("depolar/hazirdan-ver/<int:stok_id>/", views.hazirdan_ver, name="hazirdan_ver"),
 
-    path("orders/<int:pk>/cikti-alindi/", views.cikti_alindi, name="cikti_alindi"),
+    path("order/<int:pk>/cikti-alindi/", views.cikti_alindi, name="cikti_alindi"),
 ]
 
 # 📁 Statik & Medya (sadece DEBUG modda)

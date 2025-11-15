@@ -374,9 +374,19 @@ def order_detail(request, pk):
     # 📌 Diğer veriler
     nakisciler = Nakisci.objects.all()
     fasoncular = Fasoncu.objects.all()
+
+    # 🔹 Üretim event'leri
     events = OrderEvent.objects.filter(order=order).order_by("timestamp")
     update_events = events.filter(event_type="order_update")
 
+    # 🔥 Depo / Hazırdan Verilen Ürün Hareketleri
+    uretim_kayitlari = UretimGecmisi.objects.filter(
+        urun=order.urun_kodu
+    ).order_by("-tarih")
+
+
+    # 🔹 DEPO / HAZIRDAN VER kayıtları (YENİ)
+    uretim_kayitlari = UretimGecmisi.objects.filter(order=order).order_by("-tarih")
 
     is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
 
@@ -388,10 +398,13 @@ def order_detail(request, pk):
         "nakisciler": nakisciler,
         "fasoncular": fasoncular,
         "events": events,
-        "update_events": update_events,   # 📌 Eklenen satır
+        "update_events": update_events,
         "is_manager": is_manager,
+        "uretim_kayitlari": uretim_kayitlari,  # 👈 EKLENDİ
     },
 )
+
+
 
 
 @login_required
@@ -1417,29 +1430,73 @@ def hazirdan_ver(request, stok_id):
 
     if request.method == "POST":
         order_id = request.POST.get("order_id")
-        order = get_object_or_404(Order, id=order_id)
+        hedef_order = get_object_or_404(Order, id=order_id)
 
         # 🔻 Stoktan 1 adet düş
         stok.adet = max(0, stok.adet - 1)
-        stok.order = order
+
+        # 🔻 STOĞA ÜRETİM siparişi (kaynak sipariş)
+        kaynak_order = stok.order  
+
+        # 🔻 Ürünü hedef siparişe aktar
+        stok.order = hedef_order
         stok.save()
-      
-        # 🔹 Ürün başka siparişe geçtiğinde, eski depodan düşür
-        DepoStok.objects.filter(order=order).exclude(id=stok.id).delete()
 
+        # 🔹 Aynı siparişe ait önceki stok kayıtlarını temizle
+        DepoStok.objects.filter(order=hedef_order).exclude(id=stok.id).delete()
 
-        # 🔹 Üretim geçmişine kayıt
+        # ============================================================
+        # 1) Kaynak sipariş için üretim geçmişi kaydı
+        # ============================================================
+        if kaynak_order:
+            UretimGecmisi.objects.create(
+                order=kaynak_order,
+                urun=stok.urun_kodu,
+                asama="Hazırdan Verildi",
+                aciklama=f"Bu ürün {hedef_order.siparis_numarasi} siparişine gönderildi.",
+            )
+
+            # 🔥 OrderEvent (Order Detail'de görünmesi için)
+            OrderEvent.objects.create(
+                order=kaynak_order,
+                user=request.user.username,
+                gorev="hazir",
+                stage="Hazırdan Verildi",
+                value=f"{stok.urun_kodu} → {hedef_order.siparis_numarasi}",
+                adet=1,
+                event_type="stage",
+            )
+
+        # ============================================================
+        # 2) Hedef sipariş için üretim geçmişi kaydı
+        # ============================================================
         UretimGecmisi.objects.create(
+            order=hedef_order,
             urun=stok.urun_kodu,
-            asama="Hazırdan Verildi",
-            aciklama=f"{order.siparis_numarasi} siparişine teslim edildi.",
-            tarih=timezone.now(),
+            asama="Depodan Teslim Alındı",
+            aciklama=f"Bu ürün depodan alındı. Kaynak Sipariş: {kaynak_order.siparis_numarasi if kaynak_order else '-'}",
         )
 
-        messages.success(request, f"{stok.urun_kodu} {order.siparis_numarasi} siparişine teslim edildi.")
+        # 🔥 OrderEvent (Order Detail'de görünmesi için)
+        OrderEvent.objects.create(
+            order=hedef_order,
+            user=request.user.username,
+            gorev="hazir",
+            stage="Depodan Teslim Alındı",
+            value=stok.urun_kodu,
+            adet=1,
+            event_type="stage",
+        )
+
+        # ✔️ Kullanıcıya bildirim
+        messages.success(
+            request,
+            f"{stok.urun_kodu} → {hedef_order.siparis_numarasi} siparişine başarıyla teslim edildi."
+        )
+
         return redirect("depo_detay", depo_adi=stok.depo)
 
-    # 🔸 Tüm siparişleri getir
+    # GET isteğinde sipariş listesi göster
     siparisler = Order.objects.all().order_by("-id")
 
     return render(request, "depolar/hazirdan_ver.html", {
@@ -1447,16 +1504,7 @@ def hazirdan_ver(request, stok_id):
         "siparisler": siparisler,
     })
 
-@login_required
-def cikti_alindi(request, pk):
-    """
-    Siparişin çıktısı alındı olarak işaretlenir.
-    """
-    order = get_object_or_404(Order, id=pk)
-    order.cikti_alindi = True
-    order.save()
-    messages.success(request, f"{order.siparis_numarasi} siparişinin çıktısı alındı olarak işaretlendi.")
-    return redirect("order_list")
+
 
 # AJAX ile müşteri ekleme
 @login_required
@@ -1477,6 +1525,20 @@ def musteri_create_ajax(request):
         })
 
     return JsonResponse({"success": False, "message": "Geçersiz istek"})
+
+@login_required
+def cikti_alindi(request, pk):
+    """
+    Siparişin 'Yazdırıldı / Çıktı Alındı' şeklinde işaretlenmesi.
+    """
+    order = get_object_or_404(Order, id=pk)
+    order.cikti_alindi = True
+    order.save(update_fields=["cikti_alindi"])
+
+    messages.success(request, f"{order.siparis_numarasi} yazdırıldı olarak işaretlendi.")
+    return redirect("order_detail", pk=pk)
+
+
 
 @csrf_exempt
 def ajax_musteri_ekle(request):
