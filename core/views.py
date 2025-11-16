@@ -1320,36 +1320,37 @@ def nakisci_ekle(request):
             return redirect('nakisci_raporu')  # veya '/reports/nakisci/'
     return render(request, 'nakisci/yeni.html')
 
+from django.db.models import F, Sum
+
 @login_required
 def depo_detay(request, depo_adi):
-    """
-    Belirli bir deponun içindeki stok kayıtlarını ve sipariş listesini gösterir.
-    """
+
     stoklar = (
         DepoStok.objects
         .filter(depo=depo_adi)
         .select_related("order")
+        .annotate(
+            order_siparis_no=F("order__siparis_numarasi"),
+            order_tipi=F("order__siparis_tipi"),
+            order_musteri=F("order__musteri"),
+            order_siparis_tarihi=F("order__siparis_tarihi"),
+            order_teslim_tarihi=F("order__teslim_tarihi"),
+        )
         .order_by("-eklenme_tarihi")
     )
 
     toplam_adet = stoklar.aggregate(Sum("adet"))["adet__sum"] or 0
-
-    # 🔹 Tüm siparişleri getir (veya istersen aktifleri filtreleyebilirsin)
     siparisler = Order.objects.all().order_by("-siparis_tarihi")
 
-    context = {
+    return render(request, "depolar/detay.html", {
         "depo_adi": depo_adi,
         "stoklar": stoklar,
         "toplam_adet": toplam_adet,
         "siparisler": siparisler,
-    }
+    })
 
-    # 🚫 Tarayıcı ve proxy önbelleğini kapat (sayfa hep güncel görünsün)
-    response = render(request, "depolar/detay.html", context)
-    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response["Pragma"] = "no-cache"
-    response["Expires"] = "0"
-    return response
+
+
 
 
 
