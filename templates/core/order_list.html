@@ -177,6 +177,32 @@
         </table>
     </div>
 
+ <!-- 🚀 SAYFALAMA BURAYA GELECEK -->
+    {% if orders.has_other_pages %}
+    <div class="mt-3 d-flex justify-content-center">
+
+        {% if orders.has_previous %}
+            <a class="btn btn-outline-primary btn-sm mx-1"
+               href="?page={{ orders.previous_page_number }}">
+               « Önceki
+            </a>
+        {% endif %}
+
+        <span class="btn btn-light btn-sm disabled mx-1">
+            Sayfa {{ orders.number }} / {{ orders.paginator.num_pages }}
+        </span>
+
+        {% if orders.has_next %}
+            <a class="btn btn-outline-primary btn-sm mx-1"
+               href="?page={{ orders.next_page_number }}">
+               Sonraki »
+            </a>
+        {% endif %}
+
+    </div>
+    {% endif %}
+    <!-- 🚀 SAYFALAMA BİTİŞ -->
+
 </div>
 
 {% endblock %}
