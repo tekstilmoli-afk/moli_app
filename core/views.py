@@ -456,65 +456,73 @@ def update_stage(request, pk):
     value = request.GET.get("value") or request.POST.get("value")
     is_production_count = request.GET.get("is_production_count") or request.POST.get("is_production_count")
 
+    # ❗ Ön kontrol
     if not stage or not value:
         return HttpResponseForbidden("Eksik veri")
 
-    aciklama = request.GET.get("aciklama") or request.POST.get("aciklama") or ""
-    parca = request.GET.get("parca") or request.POST.get("parca") or ""
-    adet_raw = request.GET.get("adet") or request.POST.get("adet")
-    fasoncu_id = request.GET.get("fasoncu") or request.POST.get("fasoncu")
+        # ---------------------------------------------------------
+    # 📌 ÜRETİM GEÇMİŞİ → DEPO OTOMATİK TESPİT (GÜÇLENDİRİLMİŞ)
+    # ---------------------------------------------------------
+    import re
+
+    def normalize_depo_name(text):
+        t = text.lower().strip()
+        t = (
+            t.replace("ı", "i")
+             .replace("ş", "s")
+             .replace("ğ", "g")
+             .replace("ü", "u")
+             .replace("ö", "o")
+             .replace("ç", "c")
+        )
+        t = t.replace(" ", "_")
+        return t
+
+    DEPO_MAP = {
+        "koridor": "KORIDOR",
+        "showroom": "SHOWROOM",
+        "showroom_mutfak": "SHOWROOM_MUTF",
+        "dantel_odasi_yani": "DANTEL_YANI",
+        "elisi_deposu": "ELISI",
+    }
 
     try:
-        adet = int(adet_raw) if adet_raw else 1
-    except:
-        adet = 1
+        last_event = OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
 
-    username = request.user.username
-    gorev = getattr(request.user.userprofile, "gorev", "yok")
-    now = timezone.now()
+        if last_event:
+            match = re.search(r"\((.*?)\)", last_event.value or "")
 
-    if is_production_count == "1":
-        ProductionCount.objects.create(
-            order=order,
-            stage=stage,
-            count=1,
-            user=username,
-            timestamp=now
-        )
-        return HttpResponse("OK")
+            if match:
+                depo_raw = match.group(1)
 
-    fasoncu = None
-    nakisci = None
-    if fasoncu_id:
-        if stage == "nakis_durumu":
-            nakisci = Nakisci.objects.filter(id=fasoncu_id).first()
-        else:
-            fasoncu = Fasoncu.objects.filter(id=fasoncu_id).first()
+                # Normalize et
+                key = normalize_depo_name(depo_raw)
 
-    OrderEvent.objects.create(
-        order=order,
-        user=username,
-        gorev=gorev,
-        stage=stage,
-        value=value,
-        aciklama=aciklama,
-        parca=parca,
-        adet=adet,
-        fasoncu=fasoncu,
-        nakisci=nakisci,
-        timestamp=now,
-    )
+                # Mapping tablosundan depo kodunu bul
+                depo_code = DEPO_MAP.get(key)
 
-        # ✅ Üretim aşaması değiştiğinde depodan düşür
-    from core.models import DepoStok
-    silinen = DepoStok.objects.filter(order=order).delete()
-    print(f"🧹 DEPO TEMİZLİK: {order.id} için {silinen[0]} kayıt silindi.")
+                if depo_code:
+                    # önce tüm stok kayıtlarını sil
+                    DepoStok.objects.filter(order=order).delete()
+
+                    # yeni, temiz kayıt oluştur
+                    DepoStok.objects.create(
+                        urun_kodu=order.urun_kodu,
+                        renk=order.renk,
+                        beden=order.beden,
+                        adet=order.adet or 1,
+                        depo=depo_code,
+                        aciklama=f"Otomatik Depo Kaydı: {depo_code}",
+                        order=order
+                    )
+                else:
+                    # depo değilse → stoktan sil
+                    DepoStok.objects.filter(order=order).delete()
+
+    except Exception as e:
+        print("⚠️ DEPO OTOMATİK HATA:", e)
 
 
-    order.refresh_from_db()
-    events = OrderEvent.objects.filter(order=order).order_by("timestamp")
-    html = render_to_string("core/_uretim_paneli.html", {"order": order, "events": events})
-    return HttpResponse(html)
 
 
 
@@ -1593,7 +1601,10 @@ def stok_ekle(request, order_id):
             messages.error(request, "Lütfen depo ve adet bilgilerini doğru girin.")
             return redirect("order_detail", pk=order.id)
 
-        # Stoğa kaydet
+        # ✔️ 1) Eski depodaki stok kaydını tamamen sil
+        DepoStok.objects.filter(order=order).delete()
+
+        # ✔️ 2) Yeni depo kaydı oluştur
         DepoStok.objects.create(
             urun_kodu=order.urun_kodu,
             renk=order.renk,
@@ -1604,7 +1615,7 @@ def stok_ekle(request, order_id):
             order=order
         )
 
-        # Üretim geçmişine kayıt
+        # ✔️ 3) Üretim geçmişine kayıt gir
         OrderEvent.objects.create(
             order=order,
             user=request.user.username,
@@ -1618,44 +1629,6 @@ def stok_ekle(request, order_id):
         messages.success(request, f"✅ {adet} adet ürün {depo} deposuna eklendi.")
         return redirect("order_detail", pk=order.id)
 
-# 📌 DEĞİŞEN ALANLARI BULAN FONKSİYON
-def log_order_updates(request, old_obj, new_obj):
-    from .models import OrderEvent
-
-    changed = []
-
-    # 📌 Karşılaştırılacak alanlar
-    fields = [
-        "musteri", "siparis_tipi", "urun_kodu", "renk", "beden",
-        "adet", "siparis_tarihi", "teslim_tarihi",
-        "aciklama", "musteri_referans"
-    ]
-
-    for field in fields:
-        old_val = getattr(old_obj, field, None)
-        new_val = getattr(new_obj, field, None)
-
-        # FK ise adını yazsın
-        if hasattr(old_val, "ad"):
-            old_val = old_val.ad
-        if hasattr(new_val, "ad"):
-            new_val = new_val.ad
-
-        if old_val != new_val:
-            changed.append((field, old_val, new_val))
-
-    # 📦 Her değişiklik için OrderEvent oluştur
-    for field, old, new in changed:
-        OrderEvent.objects.create(
-            order=new_obj,
-            user=request.user.username,
-            gorev="yok",
-            event_type="order_update",
-            stage=f"{field}",
-            value=f"{field} değişti",
-            old_value=str(old),
-            new_value=str(new)
-        )
 
 
 # 📌 Sipariş düzenleme değişikliklerini loglayan fonksiyon
