@@ -4,7 +4,7 @@
 
 {% block content %}
 
-<div class="container">
+<div class="container-fluid px-2">
 
     
 
@@ -32,7 +32,8 @@
     </div>
 
     <!-- Tablo -->
-    <div class="table-responsive shadow-sm rounded">
+    <div class="table-responsive shadow-sm rounded table-responsive-mobile">
+
         <table class="table table-striped table-bordered table-hover align-middle table-sm">
             <thead class="table-dark">
                 <tr>
@@ -94,47 +95,75 @@
 
                     <td>
                         {% if order.qr_code_url %}
-                            <button class="btn btn-sm btn-outline-secondary"
-                                onclick="printLabel(
-                                    '{{ order.qr_code_url }}',
-                                    '{{ order.siparis_numarasi|escapejs }}',
-                                    '{{ order.siparis_tipi|escapejs }}',
-                                    '{{ order.musteri|escapejs }}',
-                                    '{{ order.urun_kodu|escapejs }}',
-                                    '{{ order.renk|escapejs }}',
-                                    '{{ order.beden|escapejs }}',
-                                    '{{ order.musteri_referans|default_if_none:''|escapejs }}'
-                                )">
-                                🖨️ Yazdır
-                            </button>
+                           <button class="btn btn-sm btn-outline-secondary"
+    onclick="printLabel(
+        '{{ order.qr_code_url|escapejs }}',
+        '{{ order.siparis_numarasi|escapejs }}',
+        '{{ order.siparis_tipi|escapejs }}',
+        '{{ order.musteri|default_if_none:""|escapejs }}',
+        '{{ order.urun_kodu|escapejs }}',
+        '{{ order.renk|escapejs }}',
+        '{{ order.beden|escapejs }}',
+        '{{ order.musteri_referans|default_if_none:""|escapejs }}'
+    )">
+    🖨️ Yazdır
+</button>
                         {% else %}
                             <span class="text-muted small fst-italic">-</span>
                         {% endif %}
                     </td>
 
                     <td class="text-end">
-                        <div class="d-flex justify-content-end gap-2 flex-wrap">
-                            <a href="{% url 'order_detail' order.id %}" class="btn btn-sm btn-primary">Görüntüle</a>
+    <div class="d-flex justify-content-end gap-2">
 
-                            {% if order.cikti_alindi %}
-                                <span class="badge bg-success">📄 Yazdırıldı</span>
-                            {% else %}
-                                <form method="post" action="{% url 'cikti_alindi' order.id %}">
-                                    {% csrf_token %}
-                                    <button class="btn btn-outline-success btn-sm">
-                                        📄 Yazdırıldı Olarak İşaretle
-                                    </button>
-                                </form>
-                            {% endif %}
+        <!-- GÖRÜNTÜLE (Sabit, Büyük) -->
+        <a href="{% url 'order_detail' order.id %}" class="btn btn-primary btn-sm">
+            Görüntüle
+        </a>
 
-                            {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
-                                <button class="btn btn-sm btn-danger"
-                                        onclick="deleteOrderInstant(this, '{{ order.id }}')">
-                                    🗑️ Sil
-                                </button>
-                            {% endif %}
-                        </div>
-                    </td>
+        <!-- ÜÇ NOKTA MENÜ -->
+        <div class="dropdown">
+            <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
+                ⋮
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end">
+
+                <!-- Yazdırıldı Bilgisi -->
+                {% if order.cikti_alindi %}
+                    <li>
+                        <span class="dropdown-item text-success">
+                            ✔ Yazdırıldı
+                        </span>
+                    </li>
+                {% else %}
+                    <li>
+                        <form method="post" action="{% url 'cikti_alindi' order.id %}">
+                            {% csrf_token %}
+                            <button class="dropdown-item">
+                                📄 Yazdırıldı Olarak İşaretle
+                            </button>
+                        </form>
+                    </li>
+                {% endif %}
+
+                <!-- Silme İşlemi -->
+                {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <button class="dropdown-item text-danger"
+                                onclick="deleteOrderInstant(this, '{{ order.id }}')">
+                            🗑️ Sil
+                        </button>
+                    </li>
+                {% endif %}
+
+            </ul>
+        </div>
+
+    </div>
+</td>
+
 
                 </tr>
                 {% empty %}
@@ -154,27 +183,68 @@
 
 {% block extra_js %}
 <script>
-function deleteOrderInstant(button, orderId) {
+function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, musteriRef) {
 
-    if (!confirm("Bu siparişi silmek istediğine emin misin?")) {
-        return;
-    }
+    let content = `
+    <html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 5px;
+            }
+            .label-container {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 0;
+            }
+            .qr-box img {
+                width: 120px;
+                height: 120px;
+            }
+            .info-box {
+                font-size: 12px;
+                line-height: 1.1;
+                max-width: 180px;
+            }
+            .info-box strong {
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
 
-    fetch(`/order/${orderId}/delete/`, {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": "{{ csrf_token }}",
-        }
-    })
-    .then(response => {
-        if (response.ok) {
-            // satırı tablodan kaldır
-            let row = button.closest("tr");
-            row.remove();
-        } else {
-            alert("Silme işleminde hata oluştu!");
-        }
-    });
+        <div class="label-container">
+
+            <div class="qr-box">
+                <img src="${qrUrl}">
+            </div>
+
+            <div class="info-box">
+                <strong>${siparisNo}</strong><br>
+                ${tip || ""}<br>
+                ${musteri || ""}<br>
+                ${urunKodu} - ${renk} - ${beden}<br>
+                ${musteriRef ? "(" + musteriRef + ")" : ""}
+            </div>
+
+        </div>
+
+        <script>
+            window.onload = function() {
+                window.print();
+            }
+        <\/script>
+
+    </body>
+    </html>
+    `;
+
+    let printWindow = window.open("", "_blank", "width=350,height=250");
+    printWindow.document.write(content);
+    printWindow.document.close();
 }
 </script>
+
 {% endblock %}
