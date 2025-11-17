@@ -460,8 +460,35 @@ def update_stage(request, pk):
     if not stage or not value:
         return HttpResponseForbidden("Eksik veri")
 
-        # ---------------------------------------------------------
-    # 📌 ÜRETİM GEÇMİŞİ → DEPO OTOMATİK TESPİT (GÜÇLENDİRİLMİŞ)
+    # ---------------------------------------------------------
+    # 1️⃣ SİPARİŞ ÜZERİNDE AŞAMAYI GÜNCELLE
+    # ---------------------------------------------------------
+    try:
+        setattr(order, stage, value)
+        order.save(update_fields=[stage])
+    except Exception as e:
+        print("Aşama güncelleme hatası:", e)
+
+    # ---------------------------------------------------------
+    # 2️⃣ ÜRETİM GEÇMİŞİNE KAYIT OLUŞTUR
+    # ---------------------------------------------------------
+    try:
+        display_value = dict(Order.DURUM_SECENEKLERI).get(value, value)
+
+        OrderEvent.objects.create(
+            order=order,
+            user=request.user.username,
+            gorev=stage.replace("_durum", ""),
+            stage=stage,
+            value=display_value,
+            adet=order.adet or 1,
+            event_type="stage"
+        )
+    except Exception as e:
+        print("Üretim geçmişi hatası:", e)
+
+    # ---------------------------------------------------------
+    # 3️⃣ ÜRETİM GEÇMİŞİNE BAKARAK DEPO OTOMATİĞİ
     # ---------------------------------------------------------
     import re
 
@@ -475,8 +502,7 @@ def update_stage(request, pk):
              .replace("ö", "o")
              .replace("ç", "c")
         )
-        t = t.replace(" ", "_")
-        return t
+        return t.replace(" ", "_")
 
     DEPO_MAP = {
         "koridor": "KORIDOR",
@@ -494,18 +520,12 @@ def update_stage(request, pk):
 
             if match:
                 depo_raw = match.group(1)
-
-                # Normalize et
                 key = normalize_depo_name(depo_raw)
-
-                # Mapping tablosundan depo kodunu bul
                 depo_code = DEPO_MAP.get(key)
 
                 if depo_code:
-                    # önce tüm stok kayıtlarını sil
                     DepoStok.objects.filter(order=order).delete()
 
-                    # yeni, temiz kayıt oluştur
                     DepoStok.objects.create(
                         urun_kodu=order.urun_kodu,
                         renk=order.renk,
@@ -516,11 +536,13 @@ def update_stage(request, pk):
                         order=order
                     )
                 else:
-                    # depo değilse → stoktan sil
                     DepoStok.objects.filter(order=order).delete()
 
     except Exception as e:
-        print("⚠️ DEPO OTOMATİK HATA:", e)
+        print("⚠️ Depo otomatik hata:", e)
+
+    # ---------------------------------------------------------
+    return redirect("order_detail", pk=order.pk)
 
 
 
