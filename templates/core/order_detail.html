@@ -461,31 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         {% endif %}
 
-        {% if uretim_kayitlari %}
-<hr class="mt-4">
-<h5 class="mt-3">📦 Depo / Hazır Üretim Hareketleri</h5>
-
-<table class="table table-sm table-bordered bg-white">
-    <thead>
-        <tr>
-            <th>Tarih</th>
-            <th>Ürün</th>
-            <th>Aşama</th>
-            <th>Açıklama</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for k in uretim_kayitlari %}
-        <tr>
-            <td>{{ k.tarih|date:"d.m.Y H:i" }}</td>
-            <td>{{ k.urun }}</td>
-            <td>{{ k.asama }}</td>
-            <td>{{ k.aciklama }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% endif %}
+        
 
 
         <!-- 🧵 Üretim Paneli -->
@@ -535,7 +511,7 @@ function adetKaydet(checkbox, stage) {
     if (!checkbox.checked) return;
     htmx.ajax('GET', `{% url 'update_stage' order.id %}`, {
         target: '#uretim-paneli',
-        swap: 'none',
+        swap: 'outerHTML',
         values: { 
             stage: stage, 
             value: 'done', 
@@ -543,6 +519,7 @@ function adetKaydet(checkbox, stage) {
         }
     });
 }
+
 
 // 🖨️ Yazdırma script'i buraya:
 document.addEventListener('click', function(e) {
@@ -577,6 +554,40 @@ document.getElementById('printImageBtn').addEventListener('click', function() {
   w.document.close();
 });
 </script>
+
+<script>
+// CSRF Token Al
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Üretim aşamalarını güncelle
+function updateStage(orderId, stage, value, isProductionCount = false) {
+
+    // HTMX AJAX çağrısı
+    htmx.ajax('POST', `/order/${orderId}/update_stage/`, {
+        target: '#uretim-paneli',
+        swap: 'outerHTML',
+        values: {
+            stage: stage,
+            value: value,
+            is_production_count: isProductionCount
+        }
+    });
+}
+</script>
+
 
 </body>
 </html>

@@ -38,7 +38,7 @@
 
 {% if events %}
     <ul id="gecmis-listesi" class="list-unstyled">
-        {% for e in events %}
+        {% for e in events reversed %}
             {% if e.event_type == "stage" %}
                 <li class="gecmis-item py-1 border-bottom d-flex justify-content-between align-items-start">
                     <div>

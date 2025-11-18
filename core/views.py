@@ -379,7 +379,7 @@ def order_detail(request, pk):
     fasoncular = Fasoncu.objects.all()
 
     # 🔹 Üretim event'leri
-    events = OrderEvent.objects.filter(order=order).order_by("timestamp")
+    events = OrderEvent.objects.filter(order=order).order_by("-timestamp")
     update_events = events.filter(event_type="order_update")
 
     # 🔥 Depo / Hazırdan Verilen Ürün Hareketleri
@@ -491,7 +491,7 @@ def update_stage(request, pk):
         print("Üretim geçmişi hatası:", e)
 
     # ---------------------------------------------------------
-    # 3️⃣ DEPO OTOMATİĞİ — SADE VE %100 ÇALIŞAN SÜRÜM
+    # 3️⃣ DEPO OTOMATİĞİ
     # ---------------------------------------------------------
     import re
 
@@ -516,23 +516,18 @@ def update_stage(request, pk):
     }
 
     try:
-        # value içinde depo bilgisi var mı?
         match = re.search(r"\((.*?)\)", value or "")
 
         if not match:
-            # ❌ depo yok → stok sil
             DepoStok.objects.filter(order=order).delete()
-
         else:
             depo_raw = match.group(1)
             key = normalize_depo_name(depo_raw)
             depo_code = DEPO_MAP.get(key)
 
             if not depo_code:
-                # ❌ parantez var ama geçerli depo değil → stok sil
                 DepoStok.objects.filter(order=order).delete()
             else:
-                # ✔ depo bulundu → doğru depoya kaydet
                 DepoStok.objects.filter(order=order).delete()
                 DepoStok.objects.create(
                     urun_kodu=order.urun_kodu,
@@ -543,9 +538,24 @@ def update_stage(request, pk):
                     aciklama=f"Otomatik Depo Kaydı: {depo_code}",
                     order=order
                 )
-
     except Exception as e:
         print("⚠️ Depo otomatik hata:", e)
+
+    # ---------------------------------------------------------
+    # 4️⃣ HTMX isteği ise paneli geri gönder
+    # ---------------------------------------------------------
+    if request.headers.get("HX-Request"):
+        return render(request, "core/_uretim_paneli.html", {
+            "order": order,
+            "events": OrderEvent.objects.filter(order=order).order_by("-timestamp")
+    })
+
+
+    # ---------------------------------------------------------
+    # 5️⃣ Normal istek ise JSON
+    # ---------------------------------------------------------
+    return JsonResponse({"status": "ok"})
+
 
 
 
