@@ -14,27 +14,21 @@
         object-fit: cover;
     }
 
-    /* 📱 Mobilde Adet, QR ve Etiket sütunlarını gizle */
     @media (max-width: 768px) {
-        /* Adet sütunu (4. sütun) */
         th:nth-child(4),
-        td:nth-child(4) {
-            display: none !important;
-        }
-
-        /* QR sütunu (9. sütun) */
+        td:nth-child(4),
         th:nth-child(9),
-        td:nth-child(9) {
-            display: none !important;
-        }
-
-        /* Etiket sütunu (10. sütun) */
+        td:nth-child(9),
         th:nth-child(10),
         td:nth-child(10) {
             display: none !important;
         }
     }
 </style>
+
+<!-- Select2 CSS (BURAYA EKLENECEK ✔️) -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 {% endblock %}
 
 </head>
@@ -99,6 +93,9 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Select2 JS (BURAYA EKLENECEK ✔️) -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 {% block extra_js %}{% endblock %}
 </body>

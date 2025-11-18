@@ -147,23 +147,19 @@ def order_list(request):
     # -----------------------------------------
     all_orders = Order.objects.only("id", "last_updated")
 
-    # Kullanıcının bu siparişleri en son ne zaman gördüğü
     seen_map = {
         s.order_id: s.seen_time
         for s in OrderSeen.objects.filter(user=request.user)
     }
 
-    # Yeni sipariş flag'leri (order.id → True/False)
     new_flags = {}
     for o in all_orders:
         last_seen = seen_map.get(o.id)
-
         if not last_seen:
-            new_flags[o.id] = True  # hiç görmediyse yeni
+            new_flags[o.id] = True
         else:
             new_flags[o.id] = o.last_updated > last_seen
 
-    # Kullanıcı bu listeyi şu an gördü (TEK KEZ)
     request.user.userprofile.last_seen_orders = timezone.now()
     request.user.userprofile.save(update_fields=["last_seen_orders"])
 
@@ -216,7 +212,7 @@ def order_list(request):
     )
 
     # -----------------------------------------
-    # 📌 5) FİLTRELER
+    # 📌 5) FİLTRELER (DOĞRU HALİ)
     # -----------------------------------------
     siparis_nolar = request.GET.getlist("siparis_no")
     musteriler = request.GET.getlist("musteri")
@@ -224,6 +220,7 @@ def order_list(request):
     renkler = request.GET.getlist("renk")
     bedenler = request.GET.getlist("beden")
     status_filter = request.GET.getlist("status")
+    siparis_tipleri = request.GET.getlist("siparis_tipi")
 
     if siparis_nolar:
         qs = qs.filter(siparis_numarasi__in=siparis_nolar)
@@ -235,18 +232,23 @@ def order_list(request):
         qs = qs.filter(renk__in=renkler)
     if bedenler:
         qs = qs.filter(beden__in=bedenler)
+    if siparis_tipleri:
+        qs = qs.filter(siparis_tipi__in=siparis_tipleri)
+
 
     if status_filter:
         stage_value_pairs = [
-            key for key, val in STAGE_TRANSLATIONS.items() if val in status_filter
+            key for key, val in STAGE_TRANSLATIONS.items()
+            if val in status_filter
         ]
-        query = Q()
+        q = Q()
         for stage, value in stage_value_pairs:
-            query |= Q(latest_stage=stage, latest_value=value)
-        qs = qs.filter(query)
+            q |= Q(latest_stage=stage, latest_value=value)
+        qs = qs.filter(q)
 
     teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
     teslim_bitis = request.GET.get("teslim_tarihi_bitis")
+
     if teslim_baslangic and teslim_bitis:
         qs = qs.filter(teslim_tarihi__range=[teslim_baslangic, teslim_bitis])
     elif teslim_baslangic:
@@ -261,11 +263,10 @@ def order_list(request):
     page_obj = paginator.get_page(request.GET.get("page"))
 
     # -----------------------------------------
-    # 📌 7) is_new FLAGİNİ PAGE_OBJ'E EKLE
+    # 📌 7) is_new FLAGİNİ EKLE
     # -----------------------------------------
     for order in page_obj:
         order.is_new = new_flags.get(order.id, False)
-
         if order.latest_stage and order.latest_value:
             order.formatted_status = STAGE_TRANSLATIONS.get(
                 (order.latest_stage, order.latest_value),
@@ -285,6 +286,7 @@ def order_list(request):
         "renk_options": Order.objects.values_list("renk", flat=True).distinct(),
         "beden_options": Order.objects.values_list("beden", flat=True).distinct(),
         "status_options": list(set(STAGE_TRANSLATIONS.values())),
+        "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct(),
     }
 
     response = render(request, "core/order_list.html", context)
@@ -292,6 +294,7 @@ def order_list(request):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
 
 
 
@@ -488,7 +491,7 @@ def update_stage(request, pk):
         print("Üretim geçmişi hatası:", e)
 
     # ---------------------------------------------------------
-    # 3️⃣ ÜRETİM GEÇMİŞİNE BAKARAK DEPO OTOMATİĞİ
+    # 3️⃣ DEPO OTOMATİĞİ — SADE VE %100 ÇALIŞAN SÜRÜM
     # ---------------------------------------------------------
     import re
 
@@ -513,36 +516,36 @@ def update_stage(request, pk):
     }
 
     try:
-        last_event = OrderEvent.objects.filter(order=order).order_by("-timestamp").first()
+        # value içinde depo bilgisi var mı?
+        match = re.search(r"\((.*?)\)", value or "")
 
-        if last_event:
-            match = re.search(r"\((.*?)\)", last_event.value or "")
+        if not match:
+            # ❌ depo yok → stok sil
+            DepoStok.objects.filter(order=order).delete()
 
-            if match:
-                depo_raw = match.group(1)
-                key = normalize_depo_name(depo_raw)
-                depo_code = DEPO_MAP.get(key)
+        else:
+            depo_raw = match.group(1)
+            key = normalize_depo_name(depo_raw)
+            depo_code = DEPO_MAP.get(key)
 
-                if depo_code:
-                    DepoStok.objects.filter(order=order).delete()
-
-                    DepoStok.objects.create(
-                        urun_kodu=order.urun_kodu,
-                        renk=order.renk,
-                        beden=order.beden,
-                        adet=order.adet or 1,
-                        depo=depo_code,
-                        aciklama=f"Otomatik Depo Kaydı: {depo_code}",
-                        order=order
-                    )
-                else:
-                    DepoStok.objects.filter(order=order).delete()
+            if not depo_code:
+                # ❌ parantez var ama geçerli depo değil → stok sil
+                DepoStok.objects.filter(order=order).delete()
+            else:
+                # ✔ depo bulundu → doğru depoya kaydet
+                DepoStok.objects.filter(order=order).delete()
+                DepoStok.objects.create(
+                    urun_kodu=order.urun_kodu,
+                    renk=order.renk,
+                    beden=order.beden,
+                    adet=order.adet or 1,
+                    depo=depo_code,
+                    aciklama=f"Otomatik Depo Kaydı: {depo_code}",
+                    order=order
+                )
 
     except Exception as e:
         print("⚠️ Depo otomatik hata:", e)
-
-    # ---------------------------------------------------------
-    return redirect("order_detail", pk=order.pk)
 
 
 

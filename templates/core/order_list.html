@@ -273,4 +273,141 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
 }
 </script>
 
+<!-- 🔍 FİLTRE MODALI -->
+<div class="modal fade" id="filterModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">🔍 Gelişmiş Filtre</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="GET" action="{% url 'order_list' %}">
+        <div class="modal-body">
+
+<!-- 🧩 0) Sipariş Tipi -->
+<div class="row mb-3">
+
+  <div class="col-md-4">
+    <label class="form-label">Sipariş Tipi</label>
+    <select class="form-select select2" name="siparis_tipi" multiple>
+      {% for t in siparis_tipi_options %}
+        {% if t %}
+        <option value="{{ t }}">{{ t }}</option>
+        {% endif %}
+      {% endfor %}
+    </select>
+  </div>
+
+</div>
+
+
+          <!-- 🧩 1) Sipariş, müşteri, ürün -->
+          <div class="row mb-3">
+
+            <div class="col-md-4">
+              <label class="form-label">Sipariş No</label>
+              <select class="form-select select2" name="siparis_no" multiple>
+                {% for s in siparis_options %}
+                  <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Müşteri</label>
+              <select class="form-select select2" name="musteri" multiple>
+                {% for m in musteri_options %}
+                  {% if m %}
+                  <option value="{{ m }}">{{ m }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Ürün Kodu</label>
+              <select class="form-select select2" name="urun_kodu" multiple>
+                {% for u in urun_options %}
+                  <option value="{{ u }}">{{ u }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+          </div>
+
+          <!-- 🎨 2) Renk – Beden -->
+          <div class="row mb-3">
+
+            <div class="col-md-6">
+              <label class="form-label">Renk</label>
+              <select class="form-select select2" name="renk" multiple>
+                {% for r in renk_options %}
+                  <option value="{{ r }}">{{ r }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Beden</label>
+              <select class="form-select select2" name="beden" multiple>
+                {% for b in beden_options %}
+                  <option value="{{ b }}">{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+          </div>
+
+          <!-- 🟦 3) Durum -->
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label class="form-label">Son Durum</label>
+              <select class="form-select select2" name="status" multiple>
+                {% for st in status_options %}
+                  <option value="{{ st }}">{{ st }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- 🗓️ 4) Tarih -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Teslim Başlangıç</label>
+              <input type="date" name="teslim_tarihi_baslangic" class="form-control">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Teslim Bitiş</label>
+              <input type="date" name="teslim_tarihi_bitis" class="form-control">
+            </div>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+          <button type="submit" class="btn btn-primary">Filtrele</button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('.select2').select2({
+        dropdownParent: $('#filterModal'),
+        width: '100%',
+        placeholder: "Seçiniz",
+        allowClear: true
+    });
+});
+</script>
+
+
 {% endblock %}
