@@ -409,5 +409,62 @@ $(document).ready(function() {
 });
 </script>
 
+<script>
+function deleteOrderInstant(btn, orderId) {
+
+    if (!confirm("Bu siparişi silmek istediğinize emin misiniz?")) {
+        return;
+    }
+
+    fetch(`/order/${orderId}/delete/`, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCookie("csrftoken")
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status === "ok") {
+            const row = btn.closest("tr");
+            if (row) row.remove();
+        } else {
+            alert("Silme başarısız: " + data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Bağlantı hatası!");
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    document.cookie.split(";").forEach(cookie => {
+        cookie = cookie.trim();
+        if (cookie.startsWith(name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        }
+    });
+    return cookieValue;
+}
+
+
+// CSRF Cookie
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            cookie = cookie.trim();
+            if (cookie.startsWith(name + "=")) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+
 
 {% endblock %}

@@ -769,24 +769,19 @@ def delete_order_event(request, event_id):
 @login_required
 @csrf_exempt
 def order_delete(request, pk):
-    # 🛡️ Yetki kontrolü — sadece patron veya müdür silebilir
+
+    # 🛡️ YETKİ KONTROLÜ
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
-        return JsonResponse({"success": False, "message": "🚫 Bu işlemi yapma yetkiniz yok."}, status=403)
+        return JsonResponse({"status": "error", "message": "Yetki yok"}, status=403)
 
+    # 🛠️ SİLME
     if request.method == "POST":
-        try:
-            order = get_object_or_404(Order, pk=pk)
-            order.delete()
+        order = get_object_or_404(Order, pk=pk)
+        order.delete()
+        return JsonResponse({"status": "ok"}, status=200)
 
-            # 🧹 Cache temizle
-            cache.clear()
+    return JsonResponse({"status": "error", "message": "POST gerekli"}, status=405)
 
-            return JsonResponse({"success": True, "message": "✅ Sipariş başarıyla silindi."}, status=200)
-
-        except Exception as e:
-            return JsonResponse({"success": False, "message": f"❌ Silme hatası: {str(e)}"}, status=500)
-
-    return JsonResponse({"success": False, "message": "❌ Geçersiz istek yöntemi."}, status=405)
 
 
 # 📊 GENEL ÜRETİM RAPORU
