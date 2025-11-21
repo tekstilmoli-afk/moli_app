@@ -290,61 +290,78 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
 <!-- 🔍 FİLTRE MODALI -->
 <div class="modal fade" id="filterModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
-    <div class="modal-content">
+    <div class="modal-content shadow-lg border-0">
 
-      <div class="modal-header">
+      <div class="modal-header bg-primary text-white">
         <h5 class="modal-title">🔍 Gelişmiş Filtre</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
 
       <form method="GET" action="{% url 'order_list' %}">
         <div class="modal-body">
 
-<!-- 🧩 0) Sipariş Tipi -->
-<div class="row mb-3">
-
-  <div class="col-md-4">
-    <label class="form-label">Sipariş Tipi</label>
-    <select class="form-select select2" name="siparis_tipi" multiple>
-      {% for t in siparis_tipi_options %}
-        {% if t %}
-        <option value="{{ t }}">{{ t }}</option>
-        {% endif %}
-      {% endfor %}
-    </select>
-  </div>
-
-</div>
-
+          <!-- 🧩 0) Sipariş Tipi -->
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label class="form-label fw-bold">Sipariş Tipi</label>
+              <select class="form-select select2" name="siparis_tipi" multiple>
+                {% for t in siparis_tipi_options %}
+                  {% if t %}
+                  <option value="{{ t }}"
+                    {% if request.GET.siparis_tipi and t in request.GET.siparis_tipi %}
+                      selected
+                    {% endif %}>
+                    {{ t }}
+                  </option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+            </div>
+          </div>
 
           <!-- 🧩 1) Sipariş, müşteri, ürün -->
           <div class="row mb-3">
 
             <div class="col-md-4">
-              <label class="form-label">Sipariş No</label>
+              <label class="form-label fw-bold">Sipariş No</label>
               <select class="form-select select2" name="siparis_no" multiple>
                 {% for s in siparis_options %}
-                  <option value="{{ s }}">{{ s }}</option>
+                  <option value="{{ s }}"
+                    {% if request.GET.siparis_no and s in request.GET.siparis_no %}
+                      selected
+                    {% endif %}>
+                    {{ s }}
+                  </option>
                 {% endfor %}
               </select>
             </div>
 
             <div class="col-md-4">
-              <label class="form-label">Müşteri</label>
+              <label class="form-label fw-bold">Müşteri</label>
               <select class="form-select select2" name="musteri" multiple>
                 {% for m in musteri_options %}
                   {% if m %}
-                  <option value="{{ m }}">{{ m }}</option>
+                  <option value="{{ m }}"
+                    {% if request.GET.musteri and m in request.GET.musteri %}
+                      selected
+                    {% endif %}>
+                    {{ m }}
+                  </option>
                   {% endif %}
                 {% endfor %}
               </select>
             </div>
 
             <div class="col-md-4">
-              <label class="form-label">Ürün Kodu</label>
+              <label class="form-label fw-bold">Ürün Kodu</label>
               <select class="form-select select2" name="urun_kodu" multiple>
                 {% for u in urun_options %}
-                  <option value="{{ u }}">{{ u }}</option>
+                  <option value="{{ u }}"
+                    {% if request.GET.urun_kodu and u in request.GET.urun_kodu %}
+                      selected
+                    {% endif %}>
+                    {{ u }}
+                  </option>
                 {% endfor %}
               </select>
             </div>
@@ -355,19 +372,29 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
           <div class="row mb-3">
 
             <div class="col-md-6">
-              <label class="form-label">Renk</label>
+              <label class="form-label fw-bold">Renk</label>
               <select class="form-select select2" name="renk" multiple>
                 {% for r in renk_options %}
-                  <option value="{{ r }}">{{ r }}</option>
+                  <option value="{{ r }}"
+                    {% if request.GET.renk and r in request.GET.renk %}
+                      selected
+                    {% endif %}>
+                    {{ r }}
+                  </option>
                 {% endfor %}
               </select>
             </div>
 
             <div class="col-md-6">
-              <label class="form-label">Beden</label>
+              <label class="form-label fw-bold">Beden</label>
               <select class="form-select select2" name="beden" multiple>
                 {% for b in beden_options %}
-                  <option value="{{ b }}">{{ b }}</option>
+                  <option value="{{ b }}"
+                    {% if request.GET.beden and b in request.GET.beden %}
+                      selected
+                    {% endif %}>
+                    {{ b }}
+                  </option>
                 {% endfor %}
               </select>
             </div>
@@ -377,10 +404,15 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
           <!-- 🟦 3) Durum -->
           <div class="row mb-3">
             <div class="col-md-12">
-              <label class="form-label">Son Durum</label>
+              <label class="form-label fw-bold">Son Durum</label>
               <select class="form-select select2" name="status" multiple>
                 {% for st in status_options %}
-                  <option value="{{ st }}">{{ st }}</option>
+                  <option value="{{ st }}"
+                    {% if request.GET.status and st in request.GET.status %}
+                      selected
+                    {% endif %}>
+                    {{ st }}
+                  </option>
                 {% endfor %}
               </select>
             </div>
@@ -389,19 +421,23 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
           <!-- 🗓️ 4) Tarih -->
           <div class="row mb-3">
             <div class="col-md-6">
-              <label class="form-label">Teslim Başlangıç</label>
-              <input type="date" name="teslim_tarihi_baslangic" class="form-control">
+              <label class="form-label fw-bold">Teslim Başlangıç</label>
+              <input type="date" name="teslim_tarihi_baslangic"
+                     value="{{ request.GET.teslim_tarihi_baslangic }}"
+                     class="form-control">
             </div>
 
             <div class="col-md-6">
-              <label class="form-label">Teslim Bitiş</label>
-              <input type="date" name="teslim_tarihi_bitis" class="form-control">
+              <label class="form-label fw-bold">Teslim Bitiş</label>
+              <input type="date" name="teslim_tarihi_bitis"
+                     value="{{ request.GET.teslim_tarihi_bitis }}"
+                     class="form-control">
             </div>
           </div>
 
         </div>
 
-        <div class="modal-footer">
+        <div class="modal-footer bg-light">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
           <button type="submit" class="btn btn-primary">Filtrele</button>
         </div>
@@ -411,6 +447,8 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
     </div>
   </div>
 </div>
+
+
 
 <script>
 $(document).ready(function() {
