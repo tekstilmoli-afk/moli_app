@@ -147,7 +147,7 @@ def order_list(request):
     # -----------------------------------------
     all_orders = Order.objects.only("id", "last_updated")
 
-        # 📊 Tüm siparişlerin toplam adedi (filtre öncesi)
+    # 📊 Tüm siparişlerin toplam adedi (filtre öncesi)
     total_count = Order.objects.count()
 
 
@@ -283,18 +283,18 @@ def order_list(request):
         else:
             order.formatted_status = "-"
 
-    # -----------------------------------------
+        # -----------------------------------------
     # 📌 8) CONTEXT
     # -----------------------------------------
     context = {
         "orders": page_obj,
-        "siparis_options": Order.objects.values_list("siparis_numarasi", flat=True).distinct(),
-        "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct(),
-        "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct(),
-        "renk_options": Order.objects.values_list("renk", flat=True).distinct(),
-        "beden_options": Order.objects.values_list("beden", flat=True).distinct(),
-        "status_options": list(set(STAGE_TRANSLATIONS.values())),
-        "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct(),
+        "siparis_options": Order.objects.values_list("siparis_numarasi", flat=True).distinct().order_by("siparis_numarasi"),
+        "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct().order_by("musteri__ad"),
+        "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct().order_by("urun_kodu"),
+        "renk_options": Order.objects.values_list("renk", flat=True).distinct().order_by("renk"),
+        "beden_options": Order.objects.values_list("beden", flat=True).distinct().order_by("beden"),
+        "status_options": sorted(set(STAGE_TRANSLATIONS.values())),
+        "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct().order_by("siparis_tipi"),
         "total_count": total_count,
         "filtered_count": filtered_count,
     }
@@ -304,6 +304,8 @@ def order_list(request):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
+
 
 
 
