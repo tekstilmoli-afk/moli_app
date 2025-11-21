@@ -126,9 +126,11 @@
     <div class="d-flex justify-content-end gap-2">
 
         <!-- GÖRÜNTÜLE (Sabit, Büyük) -->
-        <a href="{% url 'order_detail' order.id %}" class="btn btn-primary btn-sm">
-            Görüntüle
-        </a>
+        <a href="{% url 'order_detail' order.id %}?{{ request.GET.urlencode }}" 
+   class="btn btn-primary btn-sm">
+    Görüntüle
+</a>
+
 
         <!-- ÜÇ NOKTA MENÜ -->
         <div class="dropdown">
