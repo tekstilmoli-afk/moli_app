@@ -111,7 +111,7 @@ class Order(models.Model):
         ('STOK', 'Stoğa Üretim')  # 👈 Hazır üretim / depoya üretim tipi
     ]
 
-    siparis_tipi = models.CharField(max_length=5, choices=SIPARIS_TIPLERI, null=True, blank=True, db_index=True)
+    siparis_tipi = models.CharField(max_length=20, choices=SIPARIS_TIPLERI, null=True, blank=True, db_index=True)
     siparis_numarasi = models.CharField(max_length=20, unique=True, blank=True, db_index=True)
     musteri = models.ForeignKey('Musteri', on_delete=models.SET_NULL, null=True, blank=True, db_index=True)
     musteri_referans = models.CharField(max_length=150, blank=True, null=True, verbose_name="Müşteri Sipariş Referansı")

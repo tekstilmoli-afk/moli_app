@@ -283,9 +283,12 @@ def order_list(request):
         else:
             order.formatted_status = "-"
 
-        # -----------------------------------------
+    # -----------------------------------------
     # 📌 8) CONTEXT
     # -----------------------------------------
+
+    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+
     context = {
         "orders": page_obj,
         "siparis_options": Order.objects.values_list("siparis_numarasi", flat=True).distinct().order_by("siparis_numarasi"),
@@ -297,6 +300,7 @@ def order_list(request):
         "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct().order_by("siparis_tipi"),
         "total_count": total_count,
         "filtered_count": filtered_count,
+        "is_manager": is_manager,
     }
 
     response = render(request, "core/order_list.html", context)
@@ -304,6 +308,8 @@ def order_list(request):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
+
 
 
 
@@ -1757,3 +1763,71 @@ def mark_notification_read(request, pk):
 
     # Değilse bildirim listesine dön
     return redirect("notification_list")
+
+
+@login_required
+def order_multi_create(request):
+    if request.method == "POST":
+
+        urun_kodu = request.POST.get("urun_kodu")
+        musteri_id = request.POST.get("musteri")
+        siparis_tipi = request.POST.get("siparis_tipi") or None
+        teslim_tarihi = request.POST.get("teslim_tarihi") or None
+        aciklama = request.POST.get("aciklama")
+
+        musteri = Musteri.objects.filter(id=musteri_id).first()
+
+        created_orders = []
+
+        # 🔍 Gönderilen tüm POST anahtarlarını al
+        post_keys = request.POST.keys()
+
+        # 🔢 Kaç satır olduğunu otomatik bulmak için:
+        row_indices = set()
+
+        for key in post_keys:
+            if key.startswith("renk_row_"):
+                index = key.replace("renk_row_", "")
+                row_indices.add(int(index))
+
+        # 🧮 Her satırı sırayla işle
+        for i in sorted(row_indices):
+
+            renk = request.POST.get(f"renk_row_{i}")
+            bedenler = request.POST.getlist(f"beden_row_{i}[]")
+
+            if not renk:
+                continue
+
+            if not bedenler:
+                continue
+
+            # Her beden için ayrı sipariş oluştur
+            for beden in bedenler:
+
+                order = Order.objects.create(
+                    siparis_tipi=siparis_tipi,        # SERI veya STOK
+                    musteri=musteri,
+                    urun_kodu=urun_kodu,
+                    renk=renk,
+                    beden=beden,
+                    adet=1,
+                    teslim_tarihi=teslim_tarihi or None,
+                    aciklama=aciklama,
+                )
+
+                created_orders.append(order)
+
+        messages.success(request, f"{len(created_orders)} adet sipariş başarıyla oluşturuldu!")
+        return redirect("order_list")
+
+    # GET → Formu göster
+    context = {
+        "musteriler": Musteri.objects.filter(aktif=True),
+        "renkler": Order.objects.values_list("renk", flat=True).distinct(),
+        "bedenler": Order.objects.values_list("beden", flat=True).distinct(),
+    }
+    return render(request, "core/order_multi_create.html", context)
+
+
+

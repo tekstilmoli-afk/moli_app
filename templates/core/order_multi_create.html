@@ -1,0 +1,166 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Çoklu Sipariş Oluştur</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<style>
+    body { background: #f7f7f7; }
+    .card { border-radius: 12px; }
+    .select2-container .select2-selection--multiple {
+        min-height: 38px;
+        padding: 4px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+    }
+</style>
+</head>
+
+<body class="py-4">
+
+<div class="container">
+    <div class="d-flex justify-content-between mb-3">
+        <h3>➕ Çoklu Sipariş Oluştur</h3>
+        <a href="{% url 'order_list' %}" class="btn btn-secondary">⬅ Geri</a>
+    </div>
+
+    <div class="card shadow p-4">
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Ürün Kodu</label>
+                    <input type="text" name="urun_kodu" class="form-control" required placeholder="7200 / 5100 / VS01">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Müşteri</label>
+                    <select name="musteri" class="form-select select2" required>
+                        <option value="">Seçiniz</option>
+                        {% for m in musteriler %}
+                        <option value="{{ m.id }}">{{ m.ad }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Sipariş Tipi</label>
+                    <select name="siparis_tipi" class="form-select" required>
+                        <option value="SERI">Seri</option>
+                        <option value="STOK">Stoğa Üretim</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr>
+            <h5 class="fw-bold mb-3">Renk - Beden Satırları</h5>
+
+            <div id="rows-container">
+
+                <div class="row mb-3 renk-beden-row" data-index="0">
+                    <div class="col-md-5">
+                        <label class="form-label">Renk</label>
+                        <select name="renk_row_0" class="form-select select2">
+                            {% for r in renkler %}
+                            <option value="{{ r }}">{{ r }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-5">
+                        <label class="form-label">Bedenler</label>
+                        <select name="beden_row_0[]" class="form-select select2" multiple>
+                            {% for b in bedenler %}
+                            <option value="{{ b }}">{{ b }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="button" class="btn btn-danger remove-row">Sil</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <button type="button" id="add-row" class="btn btn-success">+ Satır Ekle</button>
+
+            <hr class="mt-4">
+
+            <div class="row mb-4 mt-4">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Teslim Tarihi</label>
+                    <input type="date" name="teslim_tarihi" class="form-control">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Açıklama</label>
+                    <input type="text" name="aciklama" class="form-control" placeholder="Opsiyonel">
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <button class="btn btn-primary px-5 py-2">🚀 Siparişleri Oluştur</button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+$(document).ready(function () {
+
+    $(".select2").select2();
+
+    let index = 1;
+
+    $("#add-row").click(function () {
+        let row = `
+        <div class="row mb-3 renk-beden-row" data-index="${index}">
+            <div class="col-md-5">
+                <label class="form-label">Renk</label>
+                <select name="renk_row_${index}" class="form-select select2">
+                    {% for r in renkler %}
+                    <option value="{{ r }}">{{ r }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-5">
+                <label class="form-label">Bedenler</label>
+                <select name="beden_row_${index}[]" class="form-select select2" multiple>
+                    {% for b in bedenler %}
+                    <option value="{{ b }}">{{ b }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="button" class="btn btn-danger remove-row">Sil</button>
+            </div>
+        </div>
+        `;
+
+        $("#rows-container").append(row);
+        $(".select2").select2();
+        index++;
+    });
+
+    $(document).on("click", ".remove-row", function () {
+        $(this).closest(".renk-beden-row").remove();
+    });
+
+});
+</script>
+
+</body>
+</html>

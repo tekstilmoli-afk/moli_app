@@ -42,6 +42,10 @@ urlpatterns = [
     path("orders/<int:pk>/add-image/", views.order_add_image, name="order_add_image"),
     path("images/<int:image_id>/delete/", views.delete_order_image, name="delete_order_image"),
     path("images/<int:image_id>/", views.view_image, name="view_image"),
+    
+    # 🆕 Çoklu Sipariş Oluşturma
+    path("orders/multi-create/", views.order_multi_create, name="order_multi_create"),
+
 
     # 👤 Müşteri işlemleri
     path("musteri/new/", views.musteri_create, name="musteri_create"),
