@@ -31,8 +31,17 @@
         <a href="{% url 'order_list' %}" class="btn btn-outline-secondary btn-sm">♻️ Temizle</a>
     </div>
 
+    <!-- 📊 Sipariş Sayacı -->
+<div class="alert alert-primary py-2 px-3 my-2 d-flex justify-content-between fw-bold shadow-sm" style="font-size:16px;">
+    <span>📦 Toplam: {{ total_count }}</span>
+    <span>🎯 Filtrelenmiş: {{ filtered_count }}</span>
+</div>
+
+
     <!-- Tablo -->
     <div class="table-responsive shadow-sm rounded table-responsive-mobile">
+
+
 
         <table class="table table-striped table-bordered table-hover align-middle table-sm">
             <thead class="table-dark">
@@ -177,13 +186,14 @@
         </table>
     </div>
 
- <!-- 🚀 SAYFALAMA BURAYA GELECEK -->
+ <!-- 🚀 SAYFALAMA (Filtreyi koruyan sürüm) -->
+{% with request.GET.urlencode as params %}
     {% if orders.has_other_pages %}
     <div class="mt-3 d-flex justify-content-center">
 
         {% if orders.has_previous %}
             <a class="btn btn-outline-primary btn-sm mx-1"
-               href="?page={{ orders.previous_page_number }}">
+               href="?page={{ orders.previous_page_number }}&{{ params }}">
                « Önceki
             </a>
         {% endif %}
@@ -194,14 +204,16 @@
 
         {% if orders.has_next %}
             <a class="btn btn-outline-primary btn-sm mx-1"
-               href="?page={{ orders.next_page_number }}">
+               href="?page={{ orders.next_page_number }}&{{ params }}">
                Sonraki »
             </a>
         {% endif %}
 
     </div>
     {% endif %}
-    <!-- 🚀 SAYFALAMA BİTİŞ -->
+{% endwith %}
+<!-- 🚀 SAYFALAMA BİTİŞ -->
+
 
 </div>
 

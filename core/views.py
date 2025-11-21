@@ -147,6 +147,10 @@ def order_list(request):
     # -----------------------------------------
     all_orders = Order.objects.only("id", "last_updated")
 
+        # 📊 Tüm siparişlerin toplam adedi (filtre öncesi)
+    total_count = Order.objects.count()
+
+
     seen_map = {
         s.order_id: s.seen_time
         for s in OrderSeen.objects.filter(user=request.user)
@@ -256,6 +260,10 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
+        # 📊 Filtrelenmiş sipariş adedi
+    filtered_count = qs.count()
+
+
     # -----------------------------------------
     # 📌 6) SAYFALAMA
     # -----------------------------------------
@@ -287,6 +295,8 @@ def order_list(request):
         "beden_options": Order.objects.values_list("beden", flat=True).distinct(),
         "status_options": list(set(STAGE_TRANSLATIONS.values())),
         "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct(),
+        "total_count": total_count,
+        "filtered_count": filtered_count,
     }
 
     response = render(request, "core/order_list.html", context)
