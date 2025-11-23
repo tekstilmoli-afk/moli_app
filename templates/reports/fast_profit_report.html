@@ -1,80 +1,117 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4">
-    <h3>⚡ Hızlı Ciro & Kâr Raporu</h3>
 
-    <!-- 🔍 Filtre -->
-    <form method="get" class="row g-2 mb-3">
+<div class="container mt-4">
+
+    <!-- 📌 Başlık -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="m-0">⚡ Hızlı Ciro & Kâr Raporu</h3>
+    </div>
+
+    <!-- 🔍 Filtre Alanı -->
+    <form method="get" class="row g-2 mb-4">
         <div class="col-md-3">
-            <input type="text" name="musteri" class="form-control" placeholder="Müşteri"
+            <input type="text" name="musteri" class="form-control"
+                   placeholder="Müşteri adı"
                    value="{{ musteri }}">
         </div>
+
         <div class="col-md-3">
-            <input type="date" name="t1" class="form-control">
+            <input type="date" name="t1" class="form-control" value="{{ t1 }}">
         </div>
+
         <div class="col-md-3">
-            <input type="date" name="t2" class="form-control">
+            <input type="date" name="t2" class="form-control" value="{{ t2 }}">
         </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100">Filtrele</button>
+
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-primary">
+                Filtrele
+            </button>
         </div>
     </form>
 
-    <!-- 💰 Özet -->
-    <div class="alert alert-info mb-3">
-        <strong>Ciro:</strong> {{ toplam_ciro|floatformat:2 }} ₺ |
-        <strong>Maliyet:</strong> {{ toplam_maliyet|floatformat:2 }} ₺ |
+    <!-- 📊 Üst Özet Kutusu -->
+    <div class="alert alert-info shadow-sm">
+        <strong>Ciro:</strong> {{ toplam_ciro|floatformat:2 }} ₺ &nbsp; | &nbsp;
+        <strong>Maliyet:</strong> {{ toplam_maliyet|floatformat:2 }} ₺ &nbsp; | &nbsp;
         <strong>Kâr:</strong> <b>{{ toplam_kar|floatformat:2 }}</b> ₺
     </div>
 
-    <!-- 📋 Liste -->
-    <table class="table table-striped table-sm bg-white border">
-        <thead>
-            <tr>
-                <th>No</th>
-                <th>Müşteri</th>
-                <th>Ürün</th>
-                <th>Adet</th>
-                <th>Satış</th>
-                <th>Maliyet</th>
-                <th>Kâr</th>
-                <th>Tarih</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for o in page_obj %}
-            <tr>
-                <td>
-    <a href="{% url 'order_detail' o.id %}" class="text-decoration-none fw-semibold text-primary">
-        {{ o.siparis_numarasi }}
-    </a>
-</td>
-                <td>{{ o.musteri }}</td>
-                <td>{{ o.urun_kodu }}</td>
-                <td>{{ o.adet }}</td>
-                <td>{{ o.net_kar|floatformat:2 }}</td>
-                <td>{{ o.efektif_maliyet|floatformat:2 }}</td>
-                <td>{{ o.kar|floatformat:2 }}</td>
-                <td>{{ o.siparis_tarihi|date:"d.m.Y" }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="8" class="text-center text-muted">Kayıt bulunamadı</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <!-- 📋 Tablo -->
+    <div class="table-responsive shadow-sm">
+        <table class="table table-striped table-bordered align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>No</th>
+                    <th>Müşteri</th>
+                    <th>Ürün</th>
+                    <th>Adet</th>
+                    <th>Satış</th>
+                    <th>Maliyet</th>
+                    <th>Kâr</th>
+                    <th>Tarih</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for o in page_obj %}
+                <tr>
+                    <td>
+                        <a href="{% url 'order_detail' o.id %}"
+                           class="text-decoration-none fw-semibold text-primary">
+                            {{ o.siparis_numarasi }}
+                        </a>
+                    </td>
+
+                    <td>{{ o.musteri }}</td>
+                    <td>{{ o.urun_kodu }}</td>
+                    <td>{{ o.adet }}</td>
+                    <td>{{ o.satis_fiyati|floatformat:2 }}</td>
+                    <td>{{ o.toplam_maliyet|floatformat:2 }}</td>
+                    <td class="fw-bold">
+                        {{ o.kar_backend|floatformat:2 }}
+                    </td>
+                    <td>{{ o.siparis_tarihi|date:"d.m.Y" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        Kayıt bulunamadı
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <!-- 📄 Sayfalama -->
-    <div class="d-flex justify-content-between">
-        <small>Toplam {{ page_obj.paginator.count }} kayıt</small>
-        <div>
+    <div class="d-flex justify-content-between align-items-center mt-3">
+        <small class="text-muted">
+            Toplam {{ page_obj.paginator.count }} kayıt
+        </small>
+
+        <div class="d-flex align-items-center gap-2">
             {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}" class="btn btn-outline-secondary btn-sm">Önceki</a>
+            <a href="?page={{ page_obj.previous_page_number }}"
+               class="btn btn-outline-secondary btn-sm">
+                Önceki
+            </a>
             {% endif %}
-            <span>Sayfa {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+
+            <span class="px-2">
+                Sayfa {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}
+            </span>
+
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary btn-sm">Sonraki</a>
+            <a href="?page={{ page_obj.next_page_number }}"
+               class="btn btn-outline-secondary btn-sm">
+                Sonraki
+            </a>
             {% endif %}
         </div>
     </div>
+
 </div>
+
 {% endblock %}

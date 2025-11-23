@@ -14,6 +14,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+from decimal import Decimal
 
 
 User = get_user_model()
@@ -193,23 +194,44 @@ class Order(models.Model):
         return self.siparis_tipi == 'SERI'
 
 
-    @property
-    def efektif_maliyet(self):
-        return self.maliyet_override if self.maliyet_override is not None else self.maliyet_uygulanan
+    
 
     @property
-    def kar(self):
-        if self.satis_fiyati is None or self.efektif_maliyet is None:
-            return None
-        if self.para_birimi != self.maliyet_para_birimi:
-            return None
-        return self.satis_fiyati - (self.efektif_maliyet or 0) - (self.ekstra_maliyet or 0)
+    def efektif_maliyet(self):
+        """Override varsa override; yoksa maliyet_uygulanan; yoksa 0."""
+        if self.maliyet_override is not None:
+            return Decimal(self.maliyet_override)
+
+        if self.maliyet_uygulanan is not None:
+            return Decimal(self.maliyet_uygulanan)
+
+        return Decimal(0)
 
     @property
     def toplam_maliyet(self):
-        uygulanan = self.maliyet_override if self.maliyet_override is not None else self.maliyet_uygulanan or 0
-        ekstra = self.ekstra_maliyet or 0
-        return uygulanan + ekstra
+        """Etkin maliyet + ekstra maliyet"""
+        ekstra = Decimal(self.ekstra_maliyet or 0)
+        return self.efektif_maliyet + ekstra
+
+    @property
+    def kar_backend(self):
+        """Satış fiyatı yoksa None"""
+        if not self.satis_fiyati:
+            return None
+
+        return Decimal(self.satis_fiyati) - self.toplam_maliyet
+
+    @property
+    def kar(self):
+        """
+        Net kâr:
+        satış fiyatı - toplam_maliyet (efektif + ekstra)
+        """
+        return self.kar_backend
+
+
+
+
 
     def save(self, *args, **kwargs):
         creating = self._state.adding

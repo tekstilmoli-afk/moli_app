@@ -51,7 +51,13 @@ from .models import OrderSeen
 import time
 from django.contrib.auth import get_user_model
 from .models import Notification
-
+from decimal import Decimal
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from django.core.paginator import Paginator
+from django.views.decorators.cache import never_cache
+from django.db.models import F, Sum, DecimalField, ExpressionWrapper
+from django.db.models.functions import Coalesce
 
 
 from openpyxl import Workbook
@@ -378,7 +384,6 @@ def musteri_search(request):
     return JsonResponse(list(qs), safe=False)
 
 
-# 📌 Sipariş Detay (Geçmiş Dahil)
 @login_required
 @never_cache
 def order_detail(request, pk):
@@ -400,30 +405,36 @@ def order_detail(request, pk):
     events = OrderEvent.objects.filter(order=order).order_by("-timestamp")
     update_events = events.filter(event_type="order_update")
 
+    # 🔒 Personel fiyat değişikliklerini görmesin
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        gizli_alanlar = [
+            "satis_fiyati",
+            "ekstra_maliyet",
+            "maliyet_override",
+            "maliyet_uygulanan",
+        ]
+        events = events.exclude(stage__in=gizli_alanlar)
+        update_events = update_events.exclude(stage__in=gizli_alanlar)
+
     # 🔥 Depo / Hazırdan Verilen Ürün Hareketleri
-    uretim_kayitlari = UretimGecmisi.objects.filter(
-        urun=order.urun_kodu
-    ).order_by("-tarih")
-
-
-    # 🔹 DEPO / HAZIRDAN VER kayıtları (YENİ)
     uretim_kayitlari = UretimGecmisi.objects.filter(order=order).order_by("-tarih")
 
     is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
 
     return render(
-    request,
-    "core/order_detail.html",
-    {
-        "order": order,
-        "nakisciler": nakisciler,
-        "fasoncular": fasoncular,
-        "events": events,
-        "update_events": update_events,
-        "is_manager": is_manager,
-        "uretim_kayitlari": uretim_kayitlari,  # 👈 EKLENDİ
-    },
-)
+        request,
+        "core/order_detail.html",
+        {
+            "order": order,
+            "nakisciler": nakisciler,
+            "fasoncular": fasoncular,
+            "events": events,
+            "update_events": update_events,
+            "is_manager": is_manager,
+            "uretim_kayitlari": uretim_kayitlari,
+        },
+    )
+
 
 
 
@@ -603,7 +614,7 @@ def order_edit(request, pk):
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu işlemi yapma yetkiniz yok.")
 
-    # 📌 Güncellemeden önce eski hali sakla (alan karşılaştırması için)
+    # 📌 Güncellemeden önce eski hali sakla
     old_data = {
         "musteri": str(order.musteri) if order.musteri else None,
         "siparis_tipi": order.siparis_tipi,
@@ -614,6 +625,9 @@ def order_edit(request, pk):
         "aciklama": order.aciklama,
         "musteri_referans": order.musteri_referans,
         "teslim_tarihi": order.teslim_tarihi,
+        "satis_fiyati": order.satis_fiyati,
+        "ekstra_maliyet": order.ekstra_maliyet,
+        "maliyet_override": order.maliyet_override,
     }
 
     if request.method == "POST":
@@ -621,9 +635,19 @@ def order_edit(request, pk):
 
         if form.is_valid():
             updated_order = form.save()
-            updated_order.refresh_from_db()  # 🌀 Değişiklikleri anında getir
+            updated_order.refresh_from_db()   # 🔥 Değişiklikleri anında getir
 
-            # 📌 Güncelleme sonrası yeni değerler
+            # ------------------------------------------------------------
+            # 🔥 KAR / MALİYET / FİYAT HESAPLAMASINI ANINDA TETİKLE
+            # ------------------------------------------------------------
+            _ = updated_order.efektif_maliyet
+            _ = updated_order.toplam_maliyet
+            _ = updated_order.kar_backend
+            _ = updated_order.kar     # (frontend property)
+
+            # ------------------------------------------------------------
+            # 🔥 DEĞİŞİKLİK TESPİTİ
+            # ------------------------------------------------------------
             new_data = {
                 "musteri": str(updated_order.musteri) if updated_order.musteri else None,
                 "siparis_tipi": updated_order.siparis_tipi,
@@ -634,15 +658,19 @@ def order_edit(request, pk):
                 "aciklama": updated_order.aciklama,
                 "musteri_referans": updated_order.musteri_referans,
                 "teslim_tarihi": updated_order.teslim_tarihi,
+                "satis_fiyati": updated_order.satis_fiyati,
+                "ekstra_maliyet": updated_order.ekstra_maliyet,
+                "maliyet_override": updated_order.maliyet_override,
             }
 
-            # 📌  DEĞİŞİKLİK TESPİT ET VE LOG OLUŞTUR
-            changed_fields = []   # 🔴 EKLEDİK
+            changed_fields = []
 
             for field, old_value in old_data.items():
                 new_value = new_data[field]
-
                 if str(old_value) != str(new_value):
+                    changed_fields.append(field)
+
+                    # 🔥 Güncelleme logu
                     OrderEvent.objects.create(
                         order=updated_order,
                         user=request.user.username,
@@ -650,16 +678,15 @@ def order_edit(request, pk):
                         stage=field,
                         value=f"{field} değişti",
                         event_type="order_update",
-                        old_value=old_value,
-                        new_value=new_value,
+                        old_value=str(old_value),
+                        new_value=str(new_value),
                     )
-                    changed_fields.append(field)  # 🔴 EKLEDİK
 
-            print(f"🔥 Sipariş güncelleme kayıtları kaydedildi → {updated_order.id}")
-
-            # 🛎️ BİLDİRİM OLUŞTUR (değişiklik varsa)
+            # ------------------------------------------------------------
+            # 🔔 BİLDİRİM GÖNDER (eğer değişiklik varsa)
+            # ------------------------------------------------------------
             if changed_fields:
-                from .models import Notification  # 🔴 EKLENDİ
+                from .models import Notification
 
                 alan_etiketleri = {
                     "musteri": "Müşteri",
@@ -671,6 +698,9 @@ def order_edit(request, pk):
                     "aciklama": "Açıklama",
                     "musteri_referans": "Müşteri Ref",
                     "teslim_tarihi": "Teslim Tarihi",
+                    "satis_fiyati": "Satış Fiyatı",
+                    "ekstra_maliyet": "Ekstra Maliyet",
+                    "maliyet_override": "Manuel Maliyet",
                 }
 
                 okunur_alanlar = [alan_etiketleri.get(f, f) for f in changed_fields]
@@ -679,22 +709,27 @@ def order_edit(request, pk):
                 title = f"{updated_order.siparis_numarasi} güncellendi"
                 message = f"Değişen alanlar: {degisen_text}. Güncelleyen: {request.user.username}"
 
-                all_users = User.objects.all()
-                notif_list = []
-
-                for u in all_users:
-                    notif_list.append(Notification(
+                notif_list = [
+                    Notification(
                         user=u,
                         order=updated_order,
                         title=title,
                         message=message,
-                    ))
+                    )
+                    for u in User.objects.all()
+                ]
 
                 Notification.objects.bulk_create(notif_list)
 
-                print(f"🛎️ Tüm kullanıcılara ({len(notif_list)}) bildirim gönderildi.")
+            # ------------------------------------------------------------
+            # 🚀 CACHE TEMİZLE – KESİN GEREKİYOR!!!
+            # ------------------------------------------------------------
+            from django.core.cache import cache
+            cache.clear()
 
-            # 🚀 Sayfayı cache'ten okumaması için
+            # ------------------------------------------------------------
+            # 🚀 Sayfayı yenileyerek sonucunu göster
+            # ------------------------------------------------------------
             return redirect(f"{reverse('order_detail', args=[pk])}?t={int(time.time())}")
 
     else:
@@ -708,6 +743,7 @@ def order_edit(request, pk):
         "edit_mode": True,
         "is_manager": is_manager,
     })
+
 
 
 
@@ -1001,101 +1037,88 @@ def staff_reports_view(request):
 
 
 
-@login_required
-def fast_profit_report(request):
-    from django.db import connections
-    connections["default"].close()  # ✅ Eski bağlantıyı sıfırla
+from decimal import Decimal
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from django.core.paginator import Paginator
+from core.models import Order
 
-    # 🛡️ Sadece patron ve müdür erişebilsin
+from decimal import Decimal
+from django.db.models import F, Sum, DecimalField, ExpressionWrapper
+from django.db.models.functions import Coalesce
+
+@login_required
+@never_cache
+def fast_profit_report(request):
+
+    # 🛡️ Yetki kontrolü
     if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
         return HttpResponseForbidden("Bu sayfaya erişim yetkiniz yok.")
 
-    from django.db.models import F, Sum, ExpressionWrapper, DecimalField, OuterRef, Subquery, Value
-    from django.db.models.functions import Coalesce
-    from datetime import datetime
-
-    musteri = request.GET.get("musteri")
+    musteri = request.GET.get("musteri", "").strip()
     tarih1 = request.GET.get("t1")
     tarih2 = request.GET.get("t2")
 
-    # 🧠 Her siparişin en son event'ini al
-    latest_event = (
-        OrderEvent.objects
-        .filter(order=OuterRef("pk"))
-        .order_by("-id")[:1]  # ✅ sadece 1 kayıt dönsün
-    )
-
-    # 🔍 Sadece son event'i "sevkiyat_durum = gonderildi" olan siparişleri al
     orders = (
-        Order.objects.select_related("musteri")
-        .annotate(
-            latest_stage=Subquery(latest_event.values("stage")),
-            latest_value=Subquery(latest_event.values("value")),
-        )
-        .filter(latest_stage="sevkiyat_durum", latest_value="gonderildi")
+        Order.objects
+        .select_related("musteri")
+        .filter(sevkiyat_durum="gonderildi")
+        .order_by("-id")
     )
 
-    # 🔸 Tarih ve müşteri filtreleri
+    # ---- Filtreler ----
     if musteri:
         orders = orders.filter(musteri__ad__icontains=musteri)
+
     if tarih1 and tarih2:
-        try:
-            t1 = datetime.strptime(tarih1, "%Y-%m-%d")
-            t2 = datetime.strptime(tarih2, "%Y-%m-%d")
-            orders = orders.filter(siparis_tarihi__range=[t1, t2])
-        except ValueError:
-            pass
+        orders = orders.filter(siparis_tarihi__range=[tarih1, tarih2])
     elif tarih1:
         orders = orders.filter(siparis_tarihi__gte=tarih1)
     elif tarih2:
         orders = orders.filter(siparis_tarihi__lte=tarih2)
 
-    # 💰 Etkin maliyet & net kâr (kar property’siyle çakışmasın diye net_kar)
-    eff_cost_expr = (
-        Coalesce(F("maliyet_uygulanan"), Value(0, output_field=DecimalField()))
-        + Coalesce(F("ekstra_maliyet"), Value(0, output_field=DecimalField()))
-        + Coalesce(F("maliyet_override"), Value(0, output_field=DecimalField()))
+    # ----------------------------------------------------
+    # 🛠️ TİP GÜVENLİ MALİYET HESABI
+    # ----------------------------------------------------
+    DEC = DecimalField(max_digits=12, decimal_places=2)
+    ZERO = Decimal("0.00")
+
+    maliyet_expr = ExpressionWrapper(
+        Coalesce(F("maliyet_override"), ZERO, output_field=DEC)
+        + Coalesce(F("maliyet_uygulanan"), ZERO, output_field=DEC)
+        + Coalesce(F("ekstra_maliyet"), ZERO, output_field=DEC),
+        output_field=DEC,
     )
 
-    orders = orders.annotate(
-        ef_maliyet=ExpressionWrapper(
-            eff_cost_expr, output_field=DecimalField(max_digits=15, decimal_places=2)
-        ),
-        net_kar=ExpressionWrapper(
-            F("satis_fiyati") - eff_cost_expr, output_field=DecimalField(max_digits=15, decimal_places=2)
-        ),
+    # ----------------------------------------------------
+    # ⚡ TOPLAM HESAPLAMA
+    # ----------------------------------------------------
+    agg = orders.aggregate(
+        toplam_ciro=Coalesce(Sum("satis_fiyati", output_field=DEC), ZERO, output_field=DEC),
+        toplam_maliyet=Coalesce(Sum(maliyet_expr, output_field=DEC), ZERO, output_field=DEC),
     )
 
-    # 🔢 Toplamlar (ef_maliyet ve net_kar üzerinden)
-    toplamlar = orders.aggregate(
-        toplam_ciro=Coalesce(Sum("satis_fiyati", output_field=DecimalField()), Value(0, output_field=DecimalField())),
-        toplam_maliyet=Coalesce(Sum("ef_maliyet", output_field=DecimalField()), Value(0, output_field=DecimalField())),
-        toplam_kar=Coalesce(Sum("net_kar", output_field=DecimalField()), Value(0, output_field=DecimalField())),
-    )
+    toplam_ciro = agg["toplam_ciro"]
+    toplam_maliyet = agg["toplam_maliyet"]
+    toplam_kar = toplam_ciro - toplam_maliyet
 
-    # 📄 Sayfalama
-    paginator = Paginator(orders.order_by("-id"), 20)
+    # ---- Sayfalama ----
+    paginator = Paginator(orders, 20)
     page_obj = paginator.get_page(request.GET.get("page"))
 
     context = {
         "page_obj": page_obj,
-        "toplam_ciro": toplamlar["toplam_ciro"],
-        "toplam_maliyet": toplamlar["toplam_maliyet"],
-        "toplam_kar": toplamlar["toplam_kar"],
+        "toplam_ciro": toplam_ciro,
+        "toplam_maliyet": toplam_maliyet,
+        "toplam_kar": toplam_kar,
         "musteri": musteri or "",
     }
 
-    return render(request, "reports/fast_profit_report.html", context)
-
-
-
-
-
-
-
-
-
-
+    response = render(request, "reports/fast_profit_report.html", context)
+    response["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
 
 
 
