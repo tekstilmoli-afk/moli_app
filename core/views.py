@@ -199,10 +199,18 @@ def order_list(request):
     # 📌 3) EN SON EVENT
     # -----------------------------------------
     latest_event = (
-        OrderEvent.objects
+    OrderEvent.objects
         .filter(order=OuterRef("pk"))
+        .exclude(event_type="order_update")  
+        .exclude(stage__in=[
+            "satis_fiyati",
+            "ekstra_maliyet",
+            "maliyet_override",
+            "maliyet_uygulanan",
+        ])
         .order_by("-id")[:1]
-    )
+)
+
 
     # -----------------------------------------
     # 📌 4) ANA QUERY
@@ -270,29 +278,40 @@ def order_list(request):
     filtered_count = qs.count()
 
 
-    # -----------------------------------------
-    # 📌 6) SAYFALAMA
+        # -----------------------------------------
+    # 🟦 6) SAYFALAMA
     # -----------------------------------------
     paginator = Paginator(qs, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
 
     # -----------------------------------------
-    # 📌 7) is_new FLAGİNİ EKLE
+    # 🟦 7) SON DURUM HESAPLAMA
     # -----------------------------------------
+    finance_fields = [
+        "satis_fiyati",
+        "ekstra_maliyet",
+        "maliyet_override",
+        "maliyet_uygulanan",
+    ]
+
     for order in page_obj:
         order.is_new = new_flags.get(order.id, False)
-        if order.latest_stage and order.latest_value:
-            order.formatted_status = STAGE_TRANSLATIONS.get(
-                (order.latest_stage, order.latest_value),
-                f"{order.latest_stage.replace('_', ' ').title()} → {order.latest_value.title()}",
-            )
+
+        # ❗ FİNANSAL DEĞİŞİKLİKLER SON DURUMU ETKİLEMESİN
+        if order.latest_stage in finance_fields:
+            order.formatted_status = order.son_durum
         else:
-            order.formatted_status = "-"
+            if order.latest_stage and order.latest_value:
+                order.formatted_status = STAGE_TRANSLATIONS.get(
+                    (order.latest_stage, order.latest_value),
+                    f"{order.latest_stage.replace('_', ' ').title()} → {order.latest_value.title()}",
+                )
+            else:
+                order.formatted_status = "-"
 
     # -----------------------------------------
     # 📌 8) CONTEXT
     # -----------------------------------------
-
     is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
 
     context = {
@@ -314,6 +333,7 @@ def order_list(request):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
+
 
 
 
