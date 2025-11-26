@@ -55,6 +55,7 @@
                     <th>Sipariş No</th>
                     <th>Müşteri</th>
                     <th>Ürün Kodu</th>
+                    <th>Müşteri Ref</th>
                     <th>Adet</th>
                     <th>Renk</th>
                     <th>Beden</th>
@@ -87,6 +88,14 @@
                     </td>
 
                     <td>{{ order.urun_kodu }}</td>
+                    <td>
+    {% if order.musteri_referans %}
+        {{ order.musteri_referans }}
+    {% else %}
+        <span class="text-muted">-</span>
+    {% endif %}
+</td>
+
                     <td>{{ order.adet }}</td>
                     <td>{{ order.renk }}</td>
                     <td>{{ order.beden }}</td>
@@ -342,6 +351,24 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               </select>
             </div>
 
+            <!-- 🧩 1.5) Müşteri Referansı -->
+<div class="row mb-3">
+  <div class="col-md-4">
+    <label class="form-label fw-bold">Müşteri Referansı</label>
+    <select class="form-select select2" name="musteri_referans" multiple>
+      {% for ref in musteri_referans_options %}
+        <option value="{{ ref }}"
+          {% if request.GET.musteri_referans and ref in request.GET.musteri_referans %}
+            selected
+          {% endif %}>
+          {{ ref }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+</div>
+
+
             <div class="col-md-4">
               <label class="form-label fw-bold">Müşteri</label>
               <select class="form-select select2" name="musteri" multiple>
@@ -360,6 +387,9 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
 
             <div class="col-md-4">
               <label class="form-label fw-bold">Ürün Kodu</label>
+              <div class="col-md-4">
+
+
               <select class="form-select select2" name="urun_kodu" multiple>
                 {% for u in urun_options %}
                   <option value="{{ u }}"

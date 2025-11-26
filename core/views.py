@@ -4,82 +4,67 @@ import json
 import requests
 from datetime import datetime, timedelta
 
+# ========================
+# 📌 MODELLER (TÜMÜ TEK PARÇA)
+# ========================
+from .models import (
+    Order,
+    Musteri,
+    Nakisci,
+    Fasoncu,
+    DepoStok,
+    OrderEvent,
+    OrderSeen,
+    UretimGecmisi,
+    Notification,
+    ProductCost,
+    OrderImage,
+    UserProfile,
+    Renk,
+    Beden,
+    UrunKod,
+)
+
+# ========================
+# 📌 FORMLAR
+# ========================
+from .forms import OrderForm, MusteriForm
+
+# ========================
+# 📌 DJANGO TEMEL IMPORTLAR
+# ========================
 from django.db import connections
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.paginator import Paginator
-from django.db.models import Q, Max, Count, Sum, F, ExpressionWrapper, FloatField, Subquery, OuterRef
+from django.db.models import (
+    Q, Max, Count, Sum, F, ExpressionWrapper, FloatField,
+    Subquery, OuterRef, DecimalField
+)
 from django.db.models.functions import Coalesce
-from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
-from django.shortcuts import render, redirect, get_object_or_404
+from django.http import (
+    HttpResponse, JsonResponse, HttpResponseForbidden
+)
+from django.shortcuts import (
+    render, redirect, get_object_or_404
+)
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
-from core.models import Fasoncu
-from .models import Order, Nakisci
-from django.shortcuts import get_object_or_404, redirect
-from django.contrib import messages
-from django.utils import timezone
-from .models import Order, DepoStok, OrderEvent
-from django.db.models import Sum, Count, Max
-from django.db.models import Q, Sum
-from django.views.decorators.cache import never_cache
-from .models import DepoStok, Order, UretimGecmisi
-from django.db.models import Sum
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from .models import DepoStok, Order
-from django.contrib import messages
-from django.shortcuts import get_object_or_404, redirect
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from .models import Musteri
-from django.http import JsonResponse
 from django.views.decorators.http import require_POST
-from django.views.decorators.csrf import csrf_exempt
-from .models import Musteri
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from core.models import Musteri
-from django.views.decorators.cache import never_cache
-from .models import OrderSeen
-import time
-from django.contrib.auth import get_user_model
-from .models import Notification
-from decimal import Decimal
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from django.core.paginator import Paginator
-from django.views.decorators.cache import never_cache
-from django.db.models import F, Sum, DecimalField, ExpressionWrapper
-from django.db.models.functions import Coalesce
 
-
+# ========================
+# 📌 DİĞER
+# ========================
 from openpyxl import Workbook
+from decimal import Decimal
 
-# 🗑️ Sipariş Silme (Cache-aware + AJAX uyumlu)
-from django.core.cache import cache
-
-# 📦 Proje modelleri ve formlar
-from .models import (
-    Order,
-    Musteri,
-    Nakisci,
-    Fasoncu,
-    OrderEvent,
-    UserProfile,
-    ProductCost,
-    OrderImage
-)
-from .forms import OrderForm, MusteriForm
-
-# 🧠 Google Gemini AI REST (artık sadece requests ile çağrılıyor)
-# NOT: google.generativeai modülü kaldırıldı (v1 API ile çakıştığı için)
 
 
 
@@ -239,6 +224,9 @@ def order_list(request):
     bedenler = request.GET.getlist("beden")
     status_filter = request.GET.getlist("status")
     siparis_tipleri = request.GET.getlist("siparis_tipi")
+    musteri_referans_list = request.GET.getlist("musteri_referans")
+
+
 
     if siparis_nolar:
         qs = qs.filter(siparis_numarasi__in=siparis_nolar)
@@ -252,6 +240,9 @@ def order_list(request):
         qs = qs.filter(beden__in=bedenler)
     if siparis_tipleri:
         qs = qs.filter(siparis_tipi__in=siparis_tipleri)
+    if musteri_referans_list:
+        qs = qs.filter(musteri_referans__in=musteri_referans_list)
+
 
 
     if status_filter:
@@ -321,6 +312,13 @@ def order_list(request):
         "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct().order_by("urun_kodu"),
         "renk_options": Order.objects.values_list("renk", flat=True).distinct().order_by("renk"),
         "beden_options": Order.objects.values_list("beden", flat=True).distinct().order_by("beden"),
+        "musteri_referans_options": Order.objects
+    .exclude(musteri_referans__isnull=True)
+    .exclude(musteri_referans__exact="")
+    .values_list("musteri_referans", flat=True)
+    .distinct()
+    .order_by("musteri_referans"),
+
         "status_options": sorted(set(STAGE_TRANSLATIONS.values())),
         "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct().order_by("siparis_tipi"),
         "total_count": total_count,
@@ -1810,8 +1808,10 @@ def mark_notification_read(request, pk):
 
 @login_required
 def order_multi_create(request):
+
     if request.method == "POST":
 
+        # ---- GENEL ALANLAR ----
         urun_kodu = request.POST.get("urun_kodu")
         musteri_id = request.POST.get("musteri")
         siparis_tipi = request.POST.get("siparis_tipi") or None
@@ -1820,57 +1820,226 @@ def order_multi_create(request):
 
         musteri = Musteri.objects.filter(id=musteri_id).first()
 
+        # ---- FİYAT & MALİYET (Tüm siparişler için ortak) ----
+        from decimal import Decimal
+
+        def to_decimal(value):
+            if not value:
+                return Decimal("0")
+            try:
+                return Decimal(str(value))
+            except:
+                return Decimal("0")
+
+
+        # ---- FİYAT & MALİYET (Tüm siparişler için ortak) ----
+        satis_fiyati = to_decimal(request.POST.get("satis_fiyati"))
+        maliyet_uygulanan = to_decimal(request.POST.get("maliyet_uygulanan"))
+        maliyet_override = to_decimal(request.POST.get("maliyet_override"))
+        ekstra_maliyet = to_decimal(request.POST.get("ekstra_maliyet"))
+
+        para_birimi = request.POST.get("para_birimi") or None
+        maliyet_para_birimi = request.POST.get("maliyet_para_birimi") or None
+
+
+
         created_orders = []
 
-        # 🔍 Gönderilen tüm POST anahtarlarını al
-        post_keys = request.POST.keys()
-
-        # 🔢 Kaç satır olduğunu otomatik bulmak için:
+        # ---- ROW TESPİT ----
         row_indices = set()
-
-        for key in post_keys:
+        for key in request.POST.keys():
             if key.startswith("renk_row_"):
                 index = key.replace("renk_row_", "")
-                row_indices.add(int(index))
+                if index.isdigit():
+                    row_indices.add(int(index))
 
-        # 🧮 Her satırı sırayla işle
+        # ---- SATIRLARI İŞLE ----
         for i in sorted(row_indices):
 
             renk = request.POST.get(f"renk_row_{i}")
             bedenler = request.POST.getlist(f"beden_row_{i}[]")
+            musteri_ref = request.POST.get(f"musteri_ref_row_{i}", "").strip()
 
-            if not renk:
+            if not renk or not bedenler:
                 continue
 
-            if not bedenler:
-                continue
+            # --- Adet güvenli ---
+            adet_raw = request.POST.get(f"adet_row_{i}")
+            try:
+                adet_input = int(adet_raw)
+                if adet_input < 1:
+                    adet_input = 1
+            except:
+                adet_input = 1
 
-            # Her beden için ayrı sipariş oluştur
             for beden in bedenler:
 
-                order = Order.objects.create(
-                    siparis_tipi=siparis_tipi,        # SERI veya STOK
-                    musteri=musteri,
-                    urun_kodu=urun_kodu,
-                    renk=renk,
-                    beden=beden,
-                    adet=1,
-                    teslim_tarihi=teslim_tarihi or None,
-                    aciklama=aciklama,
-                )
+                # --- Adet güvenli ---
+                adet_raw = request.POST.get(f"adet_row_{i}")
+                try:
+                    adet_input = int(adet_raw)
+                    if adet_input < 1:
+                        adet_input = 1
+                except:
+                    adet_input = 1
 
-                created_orders.append(order)
+                # 🟢 Adet kadar sipariş oluştur
+                for _ in range(adet_input):
+
+                    order = Order.objects.create(
+                        siparis_tipi=siparis_tipi,
+                        musteri=musteri,
+                        urun_kodu=urun_kodu,
+                        renk=renk,
+                        beden=beden,
+                        adet=1,   # Her sipariş tek adet olarak kaydedilir
+                        teslim_tarihi=teslim_tarihi or None,
+                        aciklama=aciklama,
+
+                        musteri_referans=musteri_ref or None,
+
+                        satis_fiyati=satis_fiyati,
+                        para_birimi=para_birimi,
+                        maliyet_uygulanan=maliyet_uygulanan,
+                        maliyet_para_birimi=maliyet_para_birimi,
+                        maliyet_override=maliyet_override,
+                        ekstra_maliyet=ekstra_maliyet,
+                    )
+
+                    created_orders.append(order)
+
+
 
         messages.success(request, f"{len(created_orders)} adet sipariş başarıyla oluşturuldu!")
         return redirect("order_list")
 
-    # GET → Formu göster
+    # --------------------------
+    # GET → FORM GÖSTER
+    # --------------------------
+
+    musteriler_qs = Musteri.objects.filter(aktif=True).order_by("ad")
+    renkler_qs = Renk.objects.filter(aktif=True).order_by("ad")
+    bedenler_qs = Beden.objects.filter(aktif=True).order_by("ad")
+    urun_kodlari_qs = UrunKod.objects.filter(aktif=True).order_by("kod")
+
+    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+
     context = {
-        "musteriler": Musteri.objects.filter(aktif=True),
-        "renkler": Order.objects.values_list("renk", flat=True).distinct(),
-        "bedenler": Order.objects.values_list("beden", flat=True).distinct(),
+        "musteriler": musteriler_qs,
+        "renkler": renkler_qs,
+        "bedenler": bedenler_qs,
+        "urun_kodlari": urun_kodlari_qs,
+
+        "aktif_musteriler": musteriler_qs,
+        "aktif_renkler": renkler_qs,
+        "aktif_bedenler": bedenler_qs,
+        "aktif_urun_kodlari": urun_kodlari_qs,
+
+        "is_manager": is_manager,
     }
+
     return render(request, "core/order_multi_create.html", context)
 
+# -------------------------------------------
+# 🟦 AJAX - BEDEN EKLE
+# -------------------------------------------
+@require_POST
+@login_required
+def beden_ekle_ajax(request):
+    ad = request.POST.get("ad", "").strip()
 
+    if not ad:
+        return JsonResponse({"success": False, "message": "Beden adı boş olamaz."})
+
+    beden = Beden.objects.create(ad=ad)
+
+    return JsonResponse({
+        "success": True,
+        "id": beden.id,
+        "ad": beden.ad
+    })
+
+
+# -------------------------------------------
+# 🟨 AJAX - BEDEN PASİF YAP
+# -------------------------------------------
+@require_POST
+@login_required
+def beden_pasif_yap_ajax(request):
+    beden_id = request.POST.get("id")
+
+    try:
+        beden = Beden.objects.get(id=beden_id)
+        beden.aktif = False
+        beden.save()
+        return JsonResponse({"success": True})
+    except Beden.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Beden bulunamadı."})
+
+
+# -------------------------------------------
+# 🟦 AJAX - ÜRÜN KODU EKLE
+# -------------------------------------------
+@require_POST
+@login_required
+def urun_kod_ekle_ajax(request):
+    kod = request.POST.get("kod", "").strip()
+
+    if not kod:
+        return JsonResponse({"success": False, "message": "Ürün kodu boş olamaz."})
+
+    urun = UrunKod.objects.create(kod=kod)
+
+    return JsonResponse({
+        "success": True,
+        "id": urun.id,
+        "kod": urun.kod
+    })
+
+
+# -------------------------------------------
+# 🟨 AJAX - ÜRÜN KODU PASİF YAP
+# -------------------------------------------
+@require_POST
+@login_required
+def urun_kod_pasif_yap_ajax(request):
+    kod_id = request.POST.get("id")
+
+    try:
+        urun = UrunKod.objects.get(id=kod_id)
+        urun.aktif = False
+        urun.save()
+        return JsonResponse({"success": True})
+    except UrunKod.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Ürün kodu bulunamadı."})
+
+
+
+@require_POST
+@login_required
+def renk_ekle_ajax(request):
+    ad = request.POST.get("ad", "").strip()
+    if not ad:
+        return JsonResponse({"success": False, "message": "Renk adı boş olamaz."})
+
+    renk = Renk.objects.create(ad=ad)
+
+    return JsonResponse({
+        "success": True,
+        "id": renk.id,
+        "ad": renk.ad
+    })
+
+@require_POST
+@login_required
+def renk_pasif_yap_ajax(request):
+    renk_id = request.POST.get("id")
+
+    try:
+        renk = Renk.objects.get(id=renk_id)
+        renk.aktif = False
+        renk.save()
+        return JsonResponse({"success": True})
+    except Renk.DoesNotExist:
+        return JsonResponse({"success": False, "message": "Renk bulunamadı."})
 

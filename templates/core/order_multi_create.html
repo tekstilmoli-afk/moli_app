@@ -17,6 +17,12 @@
         border: 1px solid #ced4da;
         border-radius: 6px;
     }
+    .select2-container .select2-selection--single {
+        min-height: 38px;
+        padding: 4px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+    }
 </style>
 </head>
 
@@ -32,13 +38,26 @@
         <form method="POST">
             {% csrf_token %}
 
+            <!-- 🔹 ÜST KISIM: ÜRÜN + MÜŞTERİ + TİP -->
             <div class="row mb-3">
+
+                <!-- ÜRÜN KODU + YÖNET BUTONU -->
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Ürün Kodu</label>
-                    <input type="text" name="urun_kodu" class="form-control" required placeholder="7200 / 5100 / VS01">
+                    <div class="input-group">
+                        <select id="urun_kodu_select" name="urun_kodu" class="form-select select2" required>
+                            <option value="">Seçiniz</option>
+                            {% for u in urun_kodlari %}
+                                <option value="{{ u.kod }}">{{ u.kod }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#urunKodModal">
+                            ⚙
+                        </button>
+                    </div>
                 </div>
 
-                <!-- MÜŞTERİ ALANI + EKLE BUTONU -->
+                <!-- MÜŞTERİ + YÖNET BUTONU -->
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Müşteri</label>
                     <div class="input-group">
@@ -48,42 +67,66 @@
                                 <option value="{{ m.id }}">{{ m.ad }}</option>
                             {% endfor %}
                         </select>
-
-                        <button type="button" id="btnMusteriEkle" class="btn btn-primary">+ Ekle</button>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#musteriModal">
+                            ⚙
+                        </button>
                     </div>
                 </div>
 
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Sipariş Tipi</label>
-                    <select name="siparis_tipi" class="form-select" required>
+                    <select id="siparis_tipi_select" name="siparis_tipi" class="form-select" required>
                         <option value="SERI">Seri</option>
                         <option value="STOK">Stoğa Üretim</option>
+                        <option value="OZEL">Özel Sipariş</option>
                     </select>
                 </div>
             </div>
 
             <hr>
-            <h5 class="fw-bold mb-3">Renk - Beden Satırları</h5>
+            <h5 class="fw-bold mb-3 d-flex justify-content-between align-items-center">
+                <span>Renk - Beden Satırları</span>
+                <!-- RENK / BEDEN YÖNETİM BUTONLARI -->
+                <span class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#renkModal">
+                        🎨 Renk Yönet
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bedenModal">
+                        👕 Beden Yönet
+                    </button>
+                </span>
+            </h5>
 
+            <!-- 🔻 SATIRLAR -->
             <div id="rows-container">
 
                 <div class="row mb-3 renk-beden-row" data-index="0">
-                    <div class="col-md-5">
+                    <div class="col-md-3">
                         <label class="form-label">Renk</label>
-                        <select name="renk_row_0" class="form-select select2">
+                        <select name="renk_row_0" class="form-select select2 renk-select">
                             {% for r in renkler %}
-                            <option value="{{ r }}">{{ r }}</option>
+                            <option value="{{ r.ad }}">{{ r.ad }}</option>
                             {% endfor %}
                         </select>
                     </div>
 
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <label class="form-label">Bedenler</label>
-                        <select name="beden_row_0[]" class="form-select select2" multiple>
+                        <select name="beden_row_0[]" class="form-select select2 beden-select" multiple>
                             {% for b in bedenler %}
-                            <option value="{{ b }}">{{ b }}</option>
+                            <option value="{{ b.ad }}">{{ b.ad }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label">Adet</label>
+                        <input type="number" min="1" value="1" name="adet_row_0" class="form-control">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Müşteri Referansı</label>
+                        <input type="text" name="musteri_ref_row_0" class="form-control" placeholder="Örn: PO123">
                     </div>
 
                     <div class="col-md-2 d-flex align-items-end">
@@ -97,6 +140,7 @@
 
             <hr class="mt-4">
 
+            <!-- 🔹 GENEL TARİH & AÇIKLAMA (TÜM SİPARİŞLER İÇİN ORTAK) -->
             <div class="row mb-4 mt-4">
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Teslim Tarihi</label>
@@ -109,7 +153,51 @@
                 </div>
             </div>
 
-            <div class="text-center mt-3">
+            <!-- 💰 FİYAT & MALİYET BÖLÜMÜ (GENEL) -->
+            {% if is_manager %}
+            <hr class="mt-4 mb-3">
+            <h5 class="text-primary">💰 Fiyat & Maliyet Bilgileri (Tüm Oluşturulacak Siparişler İçin)</h5>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Satış Fiyatı</label>
+                    <input type="number" step="0.01" name="satis_fiyati" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Para</label>
+                    <input type="text" name="para_birimi" class="form-control" value="TRY">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Maliyet (Sistemdeki)</label>
+                    <input type="number" step="0.01" name="maliyet_uygulanan" class="form-control">
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Para</label>
+                    <input type="text" name="maliyet_para_birimi" class="form-control" value="TRY">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Manuel Maliyet</label>
+                    <input type="number" step="0.01" name="maliyet_override" class="form-control">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Ekstra Maliyet</label>
+                    <input type="number" step="0.01" name="ekstra_maliyet" class="form-control">
+                </div>
+
+                <div class="col-12">
+                    <div class="alert alert-info py-2 mt-2">
+                        <strong>💹 Not:</strong> Bu alanlar girilirse tüm oluşturulan siparişlerde aynı fiyat & maliyet bilgisi kullanılacaktır.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="text-center mt-4">
                 <button class="btn btn-primary px-5 py-2">🚀 Siparişleri Oluştur</button>
             </div>
 
@@ -133,22 +221,27 @@ $(document).ready(function () {
     $("#add-row").click(function () {
         let row = `
         <div class="row mb-3 renk-beden-row" data-index="${index}">
-            <div class="col-md-5">
+            <div class="col-md-3">
                 <label class="form-label">Renk</label>
-                <select name="renk_row_${index}" class="form-select select2">
+                <select name="renk_row_${index}" class="form-select select2 renk-select">
                     {% for r in renkler %}
-                    <option value="{{ r }}">{{ r }}</option>
+                    <option value="{{ r.ad }}">{{ r.ad }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <div class="col-md-5">
+            <div class="col-md-4">
                 <label class="form-label">Bedenler</label>
-                <select name="beden_row_${index}[]" class="form-select select2" multiple>
+                <select name="beden_row_${index}[]" class="form-select select2 beden-select" multiple>
                     {% for b in bedenler %}
-                    <option value="{{ b }}">{{ b }}</option>
+                    <option value="{{ b.ad }}">{{ b.ad }}</option>
                     {% endfor %}
                 </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Müşteri Referansı</label>
+                <input type="text" name="musteri_ref_row_${index}" class="form-control" placeholder="Örn: PO123">
             </div>
 
             <div class="col-md-2 d-flex align-items-end">
@@ -165,61 +258,372 @@ $(document).ready(function () {
         $(this).closest(".renk-beden-row").remove();
     });
 
-    // Modal aç
-    $("#btnMusteriEkle").click(function () {
-        $("#musteriModal").modal("show");
-    });
+    // Stoğa üretim ise müşteri zorunlu olmasın (istersen)
+    $("#siparis_tipi_select").on("change", function () {
+        const tip = $(this).val();
+        const musteriDiv = $("#musteri_select").closest(".col-md-4");
 
-    // Müşteri kaydet
-    $("#kaydet_musteri").click(function () {
-        let ad = $("#yeni_musteri_ad").val().trim();
-
-        if (!ad) {
-            alert("Müşteri adı boş olamaz!");
-            return;
+        if (tip === "STOK") {
+            $("#musteri_select").val("").trigger("change");
+            musteriDiv.hide();
+        } else {
+            musteriDiv.show();
         }
-
-        $.post("/ajax/musteri/ekle/", {
-            ad: ad,
-            csrfmiddlewaretoken: "{{ csrf_token }}"
-        }, function (response) {
-
-            if (response.success) {
-
-                let newOption = new Option(response.ad, response.id, true, true);
-                $("#musteri_select").append(newOption).trigger("change");
-
-                $("#yeni_musteri_ad").val("");
-                $("#musteriModal").modal("hide");
-            } else {
-                alert(response.message);
-            }
-        });
-    });
+    }).trigger("change");
 
 });
 </script>
 
-<!-- Yeni Müşteri Ekle Modal -->
-<div class="modal fade" id="musteriModal" tabindex="-1">
+<!-- ------------------------------------------------------------- -->
+<!-- 📌 MÜŞTERİ YÖNETİM MODALI (EKLE + PASİF) -->
+<!-- ------------------------------------------------------------- -->
+<div class="modal fade" id="musteriModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
+
       <div class="modal-header">
-        <h5 class="modal-title">Yeni Müşteri Ekle</h5>
+        <h5 class="modal-title">👤 Müşteri Yönetimi</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
 
       <div class="modal-body">
-        <label class="form-label">Müşteri Adı</label>
-        <input type="text" id="yeni_musteri_ad" class="form-control" placeholder="Müşteri adı girin">
+
+        <h6 class="fw-bold mb-2">➕ Yeni Müşteri Ekle</h6>
+        <input type="text" id="modal_musteri_ad" class="form-control mb-3" placeholder="Örn: Ahmet Tekstil">
+        <button class="btn btn-primary w-100 mb-4" onclick="musteriKaydet()">➕ Kaydet</button>
+
+        <hr>
+
+        <h6 class="fw-bold mb-2">⚠️ Müşteri Pasif Yap</h6>
+        <select id="modal_musteri_listesi" class="form-select mb-2">
+            <option value="">Müşteri seçin...</option>
+            {% for musteri in aktif_musteriler %}
+                <option value="{{ musteri.id }}">{{ musteri.ad }}</option>
+            {% endfor %}
+        </select>
+
+        <button class="btn btn-warning w-100" onclick="musteriPasifYap()">🚫 Seçili Müşteriyi Pasif Yap</button>
+
       </div>
 
       <div class="modal-footer">
-        <button type="button" id="kaydet_musteri" class="btn btn-success">Kaydet</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
       </div>
+
     </div>
   </div>
 </div>
+
+<!-- ------------------------------------------------------------- -->
+<!-- 📌 RENK YÖNETİM MODALI -->
+<!-- ------------------------------------------------------------- -->
+<div class="modal fade" id="renkModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">🎨 Renk Yönetimi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <h6 class="fw-bold mb-2">➕ Yeni Renk Ekle</h6>
+        <input type="text" id="modal_renk_ad" class="form-control mb-3" placeholder="Örn: Lacivert">
+        <button class="btn btn-primary w-100 mb-4" onclick="renkKaydet()">➕ Kaydet</button>
+
+        <hr>
+
+        <h6 class="fw-bold mb-2">⚠️ Renk Pasif Yap</h6>
+        <select id="modal_renk_listesi" class="form-select mb-2">
+            <option value="">Renk seçin...</option>
+            {% for r in aktif_renkler %}
+                <option value="{{ r.id }}">{{ r.ad }}</option>
+            {% endfor %}
+        </select>
+
+        <button class="btn btn-warning w-100" onclick="renkPasifYap()">🚫 Seçili Rengi Pasif Yap</button>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------- -->
+<!-- 📌 BEDEN YÖNETİM MODALI -->
+<!-- ------------------------------------------------------------- -->
+<div class="modal fade" id="bedenModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">👕 Beden Yönetimi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <h6 class="fw-bold mb-2">➕ Yeni Beden Ekle</h6>
+        <input type="text" id="modal_beden_ad" class="form-control mb-3" placeholder="Örn: S / M / 1Y">
+        <button class="btn btn-primary w-100 mb-4" onclick="bedenKaydet()">➕ Kaydet</button>
+
+        <hr>
+
+        <h6 class="fw-bold mb-2">⚠️ Beden Pasif Yap</h6>
+        <select id="modal_beden_listesi" class="form-select mb-2">
+            <option value="">Beden seçin...</option>
+            {% for b in aktif_bedenler %}
+                <option value="{{ b.id }}">{{ b.ad }}</option>
+            {% endfor %}
+        </select>
+
+        <button class="btn btn-warning w-100" onclick="bedenPasifYap()">🚫 Seçili Bedeni Pasif Yap</button>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ------------------------------------------------------------- -->
+<!-- 📌 ÜRÜN KODU YÖNETİM MODALI -->
+<!-- ------------------------------------------------------------- -->
+<div class="modal fade" id="urunKodModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">📦 Ürün Kodu Yönetimi</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <h6 class="fw-bold mb-2">➕ Yeni Ürün Kodu Ekle</h6>
+        <input type="text" id="modal_urun_kod" class="form-control mb-3" placeholder="Örn: 7058 / VS01">
+        <button class="btn btn-primary w-100 mb-4" onclick="urunKodKaydet()">➕ Kaydet</button>
+
+        <hr>
+
+        <h6 class="fw-bold mb-2">⚠️ Ürün Kodunu Pasif Yap</h6>
+        <select id="modal_urun_kod_listesi" class="form-select mb-2">
+            <option value="">Ürün kodu seçin...</option>
+            {% for u in aktif_urun_kodlari %}
+                <option value="{{ u.id }}">{{ u.kod }}</option>
+            {% endfor %}
+        </select>
+
+        <button class="btn btn-warning w-100" onclick="urunKodPasifYap()">🚫 Seçili Ürün Kodunu Pasif Yap</button>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// 🔁 CSRF için yardımcı
+function getCSRFToken() {
+    return "{{ csrf_token }}";
+}
+
+/* ----------------- MÜŞTERİ ----------------- */
+function musteriKaydet() {
+    const ad = document.getElementById("modal_musteri_ad").value.trim();
+    if (!ad) { alert("Müşteri adı boş olamaz!"); return; }
+
+    fetch("/ajax/musteri/ekle/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "ad": ad })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const select = document.getElementById("musteri_select");
+            const opt = new Option(data.ad, data.id, true, true);
+            select.add(opt);
+            $("#musteri_select").trigger("change");
+
+            const modalSelect = document.getElementById("modal_musteri_listesi");
+            modalSelect.add(new Option(data.ad, data.id));
+
+            document.getElementById("modal_musteri_ad").value = "";
+            bootstrap.Modal.getInstance(document.getElementById("musteriModal")).hide();
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+
+function musteriPasifYap() {
+    const musteriId = document.getElementById("modal_musteri_listesi").value;
+    if (!musteriId) { alert("Lütfen müşteri seçin."); return; }
+    if (!confirm("Seçili müşteriyi pasif yapmak istediğinize emin misiniz?")) return;
+
+    fetch("/ajax/musteri/pasif-yap/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "id": musteriId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Müşteri pasif yapıldı.");
+
+            $("#musteri_select option[value='" + musteriId + "']").remove();
+            $("#musteri_select").trigger("change");
+            $("#modal_musteri_listesi option[value='" + musteriId + "']").remove();
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+
+/* ----------------- RENK ----------------- */
+function renkKaydet() {
+    const ad = document.getElementById("modal_renk_ad").value.trim();
+    if (!ad) { alert("Renk adı boş olamaz!"); return; }
+
+    fetch("/ajax/renk/ekle/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "ad": ad })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Tüm renk selectlerine ekle
+            document.querySelectorAll(".renk-select").forEach(sel => {
+                sel.add(new Option(data.ad, data.ad));
+            });
+
+            const modalSelect = document.getElementById("modal_renk_listesi");
+            modalSelect.add(new Option(data.ad, data.id));
+
+            document.getElementById("modal_renk_ad").value = "";
+            bootstrap.Modal.getInstance(document.getElementById("renkModal")).hide();
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+
+function renkPasifYap() {
+    const renkId = document.getElementById("modal_renk_listesi").value;
+    if (!renkId) { alert("Lütfen renk seçin."); return; }
+
+    if (!confirm("Seçili rengi pasif yapmak istediğinize emin misiniz?")) return;
+
+    fetch("/ajax/renk/pasif-yap/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "id": renkId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Renk pasif yapıldı.");
+            $("#modal_renk_listesi option[value='" + renkId + "']").remove();
+            // İstersen renk selectlerinden de silebilirsin, ama value değil adına göre eşleşmek lazım.
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+
+/* ----------------- BEDEN ----------------- */
+function bedenKaydet() {
+    const ad = document.getElementById("modal_beden_ad").value.trim();
+    if (!ad) { alert("Beden boş olamaz!"); return; }
+
+    fetch("/ajax/beden/ekle/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "ad": ad })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            document.querySelectorAll(".beden-select").forEach(sel => {
+                sel.add(new Option(data.ad, data.ad));
+            });
+
+            const modalSelect = document.getElementById("modal_beden_listesi");
+            modalSelect.add(new Option(data.ad, data.id));
+
+            document.getElementById("modal_beden_ad").value = "";
+            bootstrap.Modal.getInstance(document.getElementById("bedenModal")).hide();
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+
+function bedenPasifYap() {
+    const bedenId = document.getElementById("modal_beden_listesi").value;
+    if (!bedenId) { alert("Lütfen beden seçin."); return; }
+
+    if (!confirm("Seçili bedeni pasif yapmak istediğinize emin misiniz?")) return;
+
+    fetch("/ajax/beden/pasif-yap/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "id": bedenId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Beden pasif yapıldı.");
+            $("#modal_beden_listesi option[value='" + bedenId + "']").remove();
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+
+/* ----------------- ÜRÜN KODU ----------------- */
+function urunKodKaydet() {
+    const kod = document.getElementById("modal_urun_kod").value.trim();
+    if (!kod) { alert("Ürün kodu boş olamaz!"); return; }
+
+    fetch("/ajax/urun-kod/ekle/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "kod": kod })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const select = document.getElementById("urun_kodu_select");
+            const opt = new Option(data.kod, data.kod, true, true);
+            select.add(opt);
+            $("#urun_kodu_select").trigger("change");
+
+            const modalSelect = document.getElementById("modal_urun_kod_listesi");
+            modalSelect.add(new Option(data.kod, data.id));
+
+            document.getElementById("modal_urun_kod").value = "";
+            bootstrap.Modal.getInstance(document.getElementById("urunKodModal")).hide();
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+
+function urunKodPasifYap() {
+    const urunId = document.getElementById("modal_urun_kod_listesi").value;
+    if (!urunId) { alert("Lütfen ürün kodu seçin."); return; }
+
+    if (!confirm("Seçili ürün kodunu pasif yapmak istediğinize emin misiniz?")) return;
+
+    fetch("/ajax/urun-kod/pasif-yap/", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCSRFToken() },
+        body: new URLSearchParams({ "id": urunId })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("Ürün kodu pasif yapıldı.");
+            $("#modal_urun_kod_listesi option[value='" + urunId + "']").remove();
+        } else { alert(data.message || "Hata oluştu."); }
+    });
+}
+</script>
 
 </body>
 </html>

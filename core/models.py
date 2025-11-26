@@ -7,8 +7,8 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 import qrcode
 from io import BytesIO
-from supabase import create_client, Client
-from core.utils import upload_to_supabase
+from supabase import create_client
+from supabase import create_client
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -102,12 +102,34 @@ class Fasoncu(models.Model):
     def __str__(self):
         return self.ad
 
+class Renk(models.Model):
+    ad = models.CharField(max_length=100, unique=True)
+    aktif = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.ad
+
+
+class Beden(models.Model):
+    ad = models.CharField(max_length=20, unique=True)
+    aktif = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.ad
+
+
+class UrunKod(models.Model):
+    kod = models.CharField(max_length=100, unique=True)
+    aktif = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.kod
 
 
 
 class Order(models.Model):
     SIPARIS_TIPLERI = [
-        ('ÖZEL', 'Özel'),
+        ('OZEL', 'Özel'),
         ('SERI', 'Seri'),
         ('STOK', 'Stoğa Üretim')  # 👈 Hazır üretim / depoya üretim tipi
     ]
@@ -237,8 +259,20 @@ class Order(models.Model):
         creating = self._state.adding
 
         if creating and not self.siparis_numarasi:
-            prefix = self.siparis_tipi or "SP"
-            last_order = Order.objects.filter(siparis_tipi=self.siparis_tipi).order_by("id").last()
+
+            # ⭐ ÖZEL siparişler düzeltme
+            if self.siparis_tipi.upper() == "OZEL":
+                prefix = "OZEL"
+                real_type_list = ["OZEL"]
+            else:
+                prefix = self.siparis_tipi or "SP"
+                real_type_list = [self.siparis_tipi]
+
+            # ⭐ En son numarayı doğru bul
+            last_order = Order.objects.filter(
+                siparis_tipi__in=real_type_list
+            ).order_by("id").last()
+
             if last_order and last_order.siparis_numarasi:
                 try:
                     num = int(''.join(filter(str.isdigit, last_order.siparis_numarasi))) + 1
@@ -246,9 +280,19 @@ class Order(models.Model):
                     num = 1
             else:
                 num = 1
+
+            # ⭐ Yeni numara oluştur
             self.siparis_numarasi = f"{prefix}{num:04d}"
 
         super().save(*args, **kwargs)
+
+
+
+
+
+
+
+
 
         if creating and not self.qr_code_url:
             base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")

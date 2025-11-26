@@ -18,6 +18,9 @@ def logout_view(request):
     logout(request)
     return redirect('/login/')
 urlpatterns = [
+
+    path("notifications/", views.notification_list, name="notification_list"),
+
     # 🧭 Admin paneli
     path("admin/", admin.site.urls),
 
@@ -84,7 +87,7 @@ urlpatterns = [
     
     path("notifications/", notification_list, name="notification_list"),
 
-    path("bildirimler/", views.notification_list, name="notification_list"),
+
     path("bildirim/<int:pk>/", views.notification_read, name="notification_read"),
     
     path("bildirim-okundu/<int:pk>/", views.mark_notification_read, name="mark_notification_read"),
@@ -102,6 +105,20 @@ urlpatterns = [
     path("depolar/hazirdan-ver/<int:stok_id>/", views.hazirdan_ver, name="hazirdan_ver"),
 
     path("order/<int:pk>/cikti-alindi/", views.cikti_alindi, name="cikti_alindi"),
+
+    # 🟦 AJAX - Beden
+    path("ajax/beden/ekle/", views.beden_ekle_ajax, name="beden_ekle_ajax"),
+    path("ajax/beden/pasif-yap/", views.beden_pasif_yap_ajax, name="beden_pasif_yap_ajax"),
+
+    # 🟨 AJAX - Ürün Kodu
+    path("ajax/urun-kod/ekle/", views.urun_kod_ekle_ajax, name="urun_kod_ekle_ajax"),
+    path("ajax/urun-kod/pasif-yap/", views.urun_kod_pasif_yap_ajax, name="urun_kod_pasif_yap_ajax"),
+
+    # 🟦 AJAX - Renk
+    path("ajax/renk/ekle/", views.renk_ekle_ajax, name="renk_ekle_ajax"),
+    path("ajax/renk/pasif-yap/", views.renk_pasif_yap_ajax, name="renk_pasif_yap_ajax"),
+
+
 ]
 
 # 📁 Statik & Medya (sadece DEBUG modda)
@@ -109,7 +126,3 @@ if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
-from core.views import notification_list, mark_notification_read
-
-path("notifications/", notification_list, name="notification_list"),
-path("notifications/read/<int:pk>/", mark_notification_read, name="mark_notification_read"),
