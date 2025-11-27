@@ -3,6 +3,9 @@ import time
 import json
 import requests
 from datetime import datetime, timedelta
+def is_manager(user):
+    return user.groups.filter(name__in=["patron", "mudur"]).exists()
+ 
 
 # ========================
 # 📌 MODELLER (TÜMÜ TEK PARÇA)
@@ -137,29 +140,23 @@ def order_list(request):
     # 📌 1) TÜM SİPARİŞLERİ AL ve yeni/okunmamış hesapla
     # -----------------------------------------
     all_orders = Order.objects.only("id", "last_updated")
-
-    # 📊 Tüm siparişlerin toplam adedi (filtre öncesi)
     total_count = Order.objects.count()
-
 
     seen_map = {
         s.order_id: s.seen_time
         for s in OrderSeen.objects.filter(user=request.user)
     }
 
-    new_flags = {}
-    for o in all_orders:
-        last_seen = seen_map.get(o.id)
-        if not last_seen:
-            new_flags[o.id] = True
-        else:
-            new_flags[o.id] = o.last_updated > last_seen
+    new_flags = {
+        o.id: (o.id not in seen_map or o.last_updated > seen_map[o.id])
+        for o in all_orders
+    }
 
     request.user.userprofile.last_seen_orders = timezone.now()
     request.user.userprofile.save(update_fields=["last_seen_orders"])
 
     # -----------------------------------------
-    # 📌 2) TÜRKÇE DURUM SÖZLÜĞÜ
+    # 📌 2) Türkçe durum sözlüğü
     # -----------------------------------------
     STAGE_TRANSLATIONS = {
         ("dikim_durum", "sıraya_alındı"): "Dikime Alındı",
@@ -181,24 +178,21 @@ def order_list(request):
     }
 
     # -----------------------------------------
-    # 📌 3) EN SON EVENT
+    # 📌 3) Son event
     # -----------------------------------------
     latest_event = (
-    OrderEvent.objects
-        .filter(order=OuterRef("pk"))
-        .exclude(event_type="order_update")  
-        .exclude(stage__in=[
-            "satis_fiyati",
-            "ekstra_maliyet",
-            "maliyet_override",
-            "maliyet_uygulanan",
-        ])
-        .order_by("-id")[:1]
-)
-
+        OrderEvent.objects
+            .filter(order=OuterRef("pk"))
+            .exclude(event_type="order_update")
+            .exclude(stage__in=[
+                "satis_fiyati", "ekstra_maliyet",
+                "maliyet_override", "maliyet_uygulanan"
+            ])
+            .order_by("-id")[:1]
+    )
 
     # -----------------------------------------
-    # 📌 4) ANA QUERY
+    # 📌 4) Ana Query
     # -----------------------------------------
     qs = (
         Order.objects.select_related("musteri")
@@ -215,7 +209,7 @@ def order_list(request):
     )
 
     # -----------------------------------------
-    # 📌 5) FİLTRELER (DOĞRU HALİ)
+    # 📌 5) Filtreler
     # -----------------------------------------
     siparis_nolar = request.GET.getlist("siparis_no")
     musteriler = request.GET.getlist("musteri")
@@ -225,8 +219,6 @@ def order_list(request):
     status_filter = request.GET.getlist("status")
     siparis_tipleri = request.GET.getlist("siparis_tipi")
     musteri_referans_list = request.GET.getlist("musteri_referans")
-
-
 
     if siparis_nolar:
         qs = qs.filter(siparis_numarasi__in=siparis_nolar)
@@ -243,16 +235,12 @@ def order_list(request):
     if musteri_referans_list:
         qs = qs.filter(musteri_referans__in=musteri_referans_list)
 
-
-
     if status_filter:
-        stage_value_pairs = [
-            key for key, val in STAGE_TRANSLATIONS.items()
-            if val in status_filter
-        ]
         q = Q()
-        for stage, value in stage_value_pairs:
-            q |= Q(latest_stage=stage, latest_value=value)
+        for key, val in STAGE_TRANSLATIONS.items():
+            if val in status_filter:
+                stage, value = key
+                q |= Q(latest_stage=stage, latest_value=value)
         qs = qs.filter(q)
 
     teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
@@ -265,65 +253,59 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
-        # 📊 Filtrelenmiş sipariş adedi
     filtered_count = qs.count()
 
+    # --- Page parametresini temizle ---
+    clean_params = request.GET.copy()
+    clean_params.pop("page", None)
 
-        # -----------------------------------------
-    # 🟦 6) SAYFALAMA
+    # -----------------------------------------
+    # 📌 6) Sayfalama
     # -----------------------------------------
     paginator = Paginator(qs, 50)
     page_obj = paginator.get_page(request.GET.get("page"))
 
     # -----------------------------------------
-    # 🟦 7) SON DURUM HESAPLAMA
+    # 📌 7) Son durum hesaplama
     # -----------------------------------------
     finance_fields = [
-        "satis_fiyati",
-        "ekstra_maliyet",
-        "maliyet_override",
-        "maliyet_uygulanan",
+        "satis_fiyati", "ekstra_maliyet",
+        "maliyet_override", "maliyet_uygulanan"
     ]
 
     for order in page_obj:
         order.is_new = new_flags.get(order.id, False)
 
-        # ❗ FİNANSAL DEĞİŞİKLİKLER SON DURUMU ETKİLEMESİN
         if order.latest_stage in finance_fields:
             order.formatted_status = order.son_durum
         else:
-            if order.latest_stage and order.latest_value:
-                order.formatted_status = STAGE_TRANSLATIONS.get(
-                    (order.latest_stage, order.latest_value),
-                    f"{order.latest_stage.replace('_', ' ').title()} → {order.latest_value.title()}",
-                )
-            else:
-                order.formatted_status = "-"
+            order.formatted_status = STAGE_TRANSLATIONS.get(
+                (order.latest_stage, order.latest_value),
+                "-"
+            )
 
     # -----------------------------------------
-    # 📌 8) CONTEXT
+    # 📌 8) Context
     # -----------------------------------------
     is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
 
     context = {
         "orders": page_obj,
-        "siparis_options": Order.objects.values_list("siparis_numarasi", flat=True).distinct().order_by("siparis_numarasi"),
-        "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct().order_by("musteri__ad"),
-        "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct().order_by("urun_kodu"),
-        "renk_options": Order.objects.values_list("renk", flat=True).distinct().order_by("renk"),
-        "beden_options": Order.objects.values_list("beden", flat=True).distinct().order_by("beden"),
-        "musteri_referans_options": Order.objects
-    .exclude(musteri_referans__isnull=True)
-    .exclude(musteri_referans__exact="")
-    .values_list("musteri_referans", flat=True)
-    .distinct()
-    .order_by("musteri_referans"),
-
+        "siparis_options": Order.objects.values_list("siparis_numarasi", flat=True).distinct(),
+        "musteri_options": Order.objects.values_list("musteri__ad", flat=True).distinct(),
+        "urun_options": Order.objects.values_list("urun_kodu", flat=True).distinct(),
+        "renk_options": Order.objects.values_list("renk", flat=True).distinct(),
+        "beden_options": Order.objects.values_list("beden", flat=True).distinct(),
+        "musteri_referans_options": Order.objects.exclude(musteri_referans__isnull=True)
+                                                .exclude(musteri_referans__exact="")
+                                                .values_list("musteri_referans", flat=True)
+                                                .distinct(),
         "status_options": sorted(set(STAGE_TRANSLATIONS.values())),
-        "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct().order_by("siparis_tipi"),
+        "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct(),
         "total_count": total_count,
         "filtered_count": filtered_count,
         "is_manager": is_manager,
+        "clean_params": clean_params.urlencode(),
     }
 
     response = render(request, "core/order_list.html", context)
@@ -331,14 +313,6 @@ def order_list(request):
     response["Pragma"] = "no-cache"
     response["Expires"] = "0"
     return response
-
-
-
-
-
-
-
-
 
 
 @login_required
@@ -365,7 +339,8 @@ def order_create(request):
     else:
         form = OrderForm(user=request.user)
 
-    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+    is_manager = is_manager(request.user)
+
 
     # ✅ Modalda kullanmak için aktif müşteriler → GEREKLİ!
     aktif_musteriler = Musteri.objects.filter(aktif=True).order_by("ad")
@@ -437,7 +412,8 @@ def order_detail(request, pk):
     # 🔥 Depo / Hazırdan Verilen Ürün Hareketleri
     uretim_kayitlari = UretimGecmisi.objects.filter(order=order).order_by("-tarih")
 
-    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+    is_manager = is_manager(request.user)
+
 
     return render(
         request,
@@ -753,7 +729,8 @@ def order_edit(request, pk):
     else:
         form = OrderForm(instance=order, user=request.user)
 
-    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+    is_manager = is_manager(request.user)
+
 
     return render(request, "core/order_form.html", {
         "form": form,
@@ -1922,7 +1899,8 @@ def order_multi_create(request):
     bedenler_qs = Beden.objects.filter(aktif=True).order_by("ad")
     urun_kodlari_qs = UrunKod.objects.filter(aktif=True).order_by("kod")
 
-    is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
+    is_manager = is_manager(request.user)
+
 
     context = {
         "musteriler": musteriler_qs,

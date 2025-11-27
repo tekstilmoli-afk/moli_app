@@ -204,7 +204,7 @@
     </div>
 
  <!-- 🚀 SAYFALAMA (Filtreyi koruyan sürüm) -->
-{% with request.GET.urlencode as params %}
+{% with clean_params as params %}
     {% if orders.has_other_pages %}
     <div class="mt-3 d-flex justify-content-center">
 
