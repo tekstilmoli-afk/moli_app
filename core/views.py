@@ -214,7 +214,7 @@ def order_list(request):
         .order_by("-id")
     )
 
-    # -----------------------------------------
+   # -----------------------------------------
     # 📌 5) FİLTRELER (DOĞRU HALİ)
     # -----------------------------------------
     siparis_nolar = request.GET.getlist("siparis_no")
@@ -226,25 +226,29 @@ def order_list(request):
     siparis_tipleri = request.GET.getlist("siparis_tipi")
     musteri_referans_list = request.GET.getlist("musteri_referans")
 
-
-
+    # --- Filtre Uygulama ---
     if siparis_nolar:
         qs = qs.filter(siparis_numarasi__in=siparis_nolar)
+
     if musteriler:
         qs = qs.filter(musteri__ad__in=musteriler)
+
     if urun_kodlari:
         qs = qs.filter(urun_kodu__in=urun_kodlari)
+
     if renkler:
         qs = qs.filter(renk__in=renkler)
+
     if bedenler:
         qs = qs.filter(beden__in=bedenler)
+
     if siparis_tipleri:
         qs = qs.filter(siparis_tipi__in=siparis_tipleri)
+
     if musteri_referans_list:
         qs = qs.filter(musteri_referans__in=musteri_referans_list)
 
-
-
+    # --- Durum Filtresi ---
     if status_filter:
         stage_value_pairs = [
             key for key, val in STAGE_TRANSLATIONS.items()
@@ -255,6 +259,7 @@ def order_list(request):
             q |= Q(latest_stage=stage, latest_value=value)
         qs = qs.filter(q)
 
+    # --- Teslim Tarihi Aralığı ---
     teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
     teslim_bitis = request.GET.get("teslim_tarihi_bitis")
 
@@ -265,8 +270,20 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
-        # 📊 Filtrelenmiş sipariş adedi
+    # 📊 Filtrelenmiş sipariş adedi
     filtered_count = qs.count()
+
+    # -----------------------------------------
+    # 📌 TEMPLATE İÇİN SEÇİLEN DEĞERLER
+    # -----------------------------------------
+    selected_siparis_no = siparis_nolar
+    selected_musteri = musteriler
+    selected_urun_kodu = urun_kodlari
+    selected_renk = renkler
+    selected_beden = bedenler
+    selected_status = status_filter
+    selected_siparis_tipi = siparis_tipleri
+    selected_musteri_referans = musteri_referans_list
 
 
         # -----------------------------------------

@@ -128,7 +128,8 @@
         '{{ order.urun_kodu|escapejs }}',
         '{{ order.renk|escapejs }}',
         '{{ order.beden|escapejs }}',
-        '{{ order.musteri_referans|default_if_none:""|escapejs }}'
+        '{{ order.musteri_referans|default_if_none:""|escapejs }}',
+        '{{ order.aciklama|default_if_none:""|escapejs }}'
     )">
     🖨️ Yazdır
 </button>
@@ -283,7 +284,9 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
 </script>
 
 
-<!-- 🔍 FİLTRE MODALI -->
+<!-- 🔍 GELİŞMİŞ FİLTRE MODALI -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
 <div class="modal fade" id="filterModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content shadow-lg border-0">
@@ -298,144 +301,152 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
 
           <!-- 🧩 0) Sipariş Tipi -->
           <div class="row mb-3">
-            <div class="col-md-4">
-              <label class="form-label fw-bold">Sipariş Tipi</label>
-              <select class="form-select select2" name="siparis_tipi" multiple>
+            <div class="col-md-12">
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Sipariş Tipi
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#tipSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#tipSelect">Temizle</button>
+                </span>
+              </label>
+              <select id="tipSelect" class="form-select select2" name="siparis_tipi" multiple>
                 {% for t in siparis_tipi_options %}
-                  {% if t %}
-                  <option value="{{ t }}"
-                    {% if request.GET.siparis_tipi and t in request.GET.siparis_tipi %}
-                      selected
-                    {% endif %}>
-                    {{ t }}
-                  </option>
-                  {% endif %}
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-
-          <!-- 🧩 1) Sipariş, müşteri, ürün -->
-          <div class="row mb-3">
-
-            <div class="col-md-4">
-              <label class="form-label fw-bold">Sipariş No</label>
-              <select class="form-select select2" name="siparis_no" multiple>
-                {% for s in siparis_options %}
-                  <option value="{{ s }}"
-                    {% if request.GET.siparis_no and s in request.GET.siparis_no %}
-                      selected
-                    {% endif %}>
-                    {{ s }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-
-            <!-- 🧩 1.5) Müşteri Referansı -->
-<div class="row mb-3">
-  <div class="col-md-4">
-    <label class="form-label fw-bold">Müşteri Referansı</label>
-    <select class="form-select select2" name="musteri_referans" multiple>
-      {% for ref in musteri_referans_options %}
-        <option value="{{ ref }}"
-          {% if request.GET.musteri_referans and ref in request.GET.musteri_referans %}
+                  <option value="{{ t }}" 
+        {% if t in request.GET.siparis_tipi %}
             selected
-          {% endif %}>
-          {{ ref }}
-        </option>
-      {% endfor %}
-    </select>
-  </div>
-</div>
+        {% endif %}
+>{{ t }}</option>
 
-
-            <div class="col-md-4">
-              <label class="form-label fw-bold">Müşteri</label>
-              <select class="form-select select2" name="musteri" multiple>
-                {% for m in musteri_options %}
-                  {% if m %}
-                  <option value="{{ m }}"
-                    {% if request.GET.musteri and m in request.GET.musteri %}
-                      selected
-                    {% endif %}>
-                    {{ m }}
-                  </option>
-                  {% endif %}
                 {% endfor %}
               </select>
             </div>
-
-            <div class="col-md-4">
-              <label class="form-label fw-bold">Ürün Kodu</label>
-              <div class="col-md-4">
-
-
-              <select class="form-select select2" name="urun_kodu" multiple>
-                {% for u in urun_options %}
-                  <option value="{{ u }}"
-                    {% if request.GET.urun_kodu and u in request.GET.urun_kodu %}
-                      selected
-                    {% endif %}>
-                    {{ u }}
-                  </option>
-                {% endfor %}
-              </select>
-            </div>
-
           </div>
 
-          <!-- 🎨 2) Renk – Beden -->
+          <!-- 🧩 Sipariş No / Müşteri / Ürün -->
           <div class="row mb-3">
 
             <div class="col-md-6">
-              <label class="form-label fw-bold">Renk</label>
-              <select class="form-select select2" name="renk" multiple>
-                {% for r in renk_options %}
-                  <option value="{{ r }}"
-                    {% if request.GET.renk and r in request.GET.renk %}
-                      selected
-                    {% endif %}>
-                    {{ r }}
-                  </option>
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Sipariş No
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#siparisSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#siparisSelect">Temizle</button>
+                </span>
+              </label>
+
+              <select id="siparisSelect" class="form-select select2" name="siparis_no" multiple>
+                {% for s in siparis_options %}
+                  <option value="{{ s }}" {% if s in request.GET.siparis_no %}selected{% endif %}>{{ s }}</option>
                 {% endfor %}
               </select>
             </div>
 
             <div class="col-md-6">
-              <label class="form-label fw-bold">Beden</label>
-              <select class="form-select select2" name="beden" multiple>
-                {% for b in beden_options %}
-                  <option value="{{ b }}"
-                    {% if request.GET.beden and b in request.GET.beden %}
-                      selected
-                    {% endif %}>
-                    {{ b }}
-                  </option>
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Müşteri
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#musteriSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#musteriSelect">Temizle</button>
+                </span>
+              </label>
+              <select id="musteriSelect" class="form-select select2" name="musteri" multiple>
+                {% for m in musteri_options %}
+                  <option value="{{ m }}" {% if m in request.GET.musteri %}selected{% endif %}>{{ m }}</option>
                 {% endfor %}
               </select>
             </div>
 
           </div>
 
-          <!-- 🟦 3) Durum -->
+          <!-- 🧩 Müşteri Referansı + Ürün -->
+          <div class="row mb-3">
+
+            <div class="col-md-6">
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Müşteri Referansı
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#refSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#refSelect">Temizle</button>
+                </span>
+              </label>
+              <select id="refSelect" class="form-select select2" name="musteri_referans" multiple>
+                {% for ref in musteri_referans_options %}
+                  <option value="{{ ref }}" {% if ref in request.GET.musteri_referans %}selected{% endif %}>{{ ref }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Ürün Kodu
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#urunSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#urunSelect">Temizle</button>
+                </span>
+              </label>
+              <select id="urunSelect" class="form-select select2" name="urun_kodu" multiple>
+                {% for u in urun_options %}
+                  <option value="{{ u }}" {% if u in request.GET.urun_kodu %}selected{% endif %}>{{ u }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+          </div>
+
+          <!-- 🟦 Renk / Beden -->
+          <div class="row mb-3">
+
+            <div class="col-md-6">
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Renk
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#renkSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#renkSelect">Temizle</button>
+                </span>
+              </label>
+              <select id="renkSelect" class="form-select select2" name="renk" multiple>
+                {% for r in renk_options %}
+                  <option value="{{ r }}" {% if r in request.GET.renk %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Beden
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#bedenSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#bedenSelect">Temizle</button>
+                </span>
+              </label>
+              <select id="bedenSelect" class="form-select select2" name="beden" multiple>
+                {% for b in beden_options %}
+                  <option value="{{ b }}" {% if b in request.GET.beden %}selected{% endif %}>{{ b }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+          </div>
+
+          <!-- 🟦 Son Durum -->
           <div class="row mb-3">
             <div class="col-md-12">
-              <label class="form-label fw-bold">Son Durum</label>
-              <select class="form-select select2" name="status" multiple>
+              <label class="form-label fw-bold d-flex justify-content-between">
+                Son Durum
+                <span>
+                  <button type="button" class="btn btn-sm btn-light select-all" data-target="#durumSelect">Tümünü Seç</button>
+                  <button type="button" class="btn btn-sm btn-light deselect-all" data-target="#durumSelect">Temizle</button>
+                </span>
+              </label>
+              <select id="durumSelect" class="form-select select2" name="status" multiple>
                 {% for st in status_options %}
-                  <option value="{{ st }}"
-                    {% if request.GET.status and st in request.GET.status %}
-                      selected
-                    {% endif %}>
-                    {{ st }}
-                  </option>
+                  <option value="{{ st }}" {% if st in request.GET.status %}selected{% endif %}>{{ st }}</option>
                 {% endfor %}
               </select>
             </div>
           </div>
 
-          <!-- 🗓️ 4) Tarih -->
+          <!-- 🗓️ Tarih -->
           <div class="row mb-3">
             <div class="col-md-6">
               <label class="form-label fw-bold">Teslim Başlangıç</label>
@@ -443,7 +454,6 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
                      value="{{ request.GET.teslim_tarihi_baslangic }}"
                      class="form-control">
             </div>
-
             <div class="col-md-6">
               <label class="form-label fw-bold">Teslim Bitiş</label>
               <input type="date" name="teslim_tarihi_bitis"
@@ -465,18 +475,44 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
   </div>
 </div>
 
-
+<!-- SELECT2 JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
 $(document).ready(function() {
+
     $('.select2').select2({
         dropdownParent: $('#filterModal'),
         width: '100%',
-        placeholder: "Seçiniz",
-        allowClear: true
+        closeOnSelect: false,
+        allowClear: true,
+        placeholder: "Seçiniz"
+    });
+
+    // Bir seçim yapıldığında select2 menüsünü otomatik kapat
+    $('.select2').on('select2:select', function (e) {
+        let selectElement = $(this);
+        setTimeout(() => {
+            selectElement.select2('close');
+        }, 50);
+    });
+
+
+    // 🔵 Hepsini seç
+    $(".select-all").click(function() {
+        let target = $(this).data("target");
+        $(target + " option").prop("selected", true).trigger("change");
+    });
+
+    // 🔵 Temizle
+    $(".deselect-all").click(function() {
+        let target = $(this).data("target");
+        $(target).val(null).trigger("change");
     });
 });
 </script>
+
 
 <script>
 function deleteOrderInstant(btn, orderId) {
