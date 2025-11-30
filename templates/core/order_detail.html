@@ -160,7 +160,7 @@
 <div class="container">
     <div class="card shadow-lg mx-auto p-4" style="max-width: 750px;">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <a href="{% url 'order_list' %}?{{ request.META.QUERY_STRING }}" 
+            <a href="{{ request.GET.next|default:request.META.HTTP_REFERER|default:'/' }}"
    class="btn btn-outline-secondary btn-sm no-print">
     ⬅ Geri
 </a>
