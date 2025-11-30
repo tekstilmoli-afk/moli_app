@@ -22,18 +22,37 @@
     margin-bottom: 5px;
 }
 
-/* ✅ Yazdırma ayarları */
+/* 💻 Ekran görünümü için QR bloğu */
+.qr-print-block {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+.qr-print-block img,
+.qr-img {
+    max-height: 140px;
+    width: auto;
+}
+
+.qr-print-block .qr-text {
+    font-size: 14px;
+    line-height: 1.3;
+}
+
+/* ✅ YAZDIRMA MODU */
 @media print {
-    /* 🔹 Sayfanın taşmasını engelle */
+
     html, body {
         margin: 0 !important;
         padding: 0 !important;
         width: 100% !important;
         height: auto !important;
-        zoom: 0.75; /* %75 ölçekleme */
+        /* zoom: 0.75;  <-- KÜÇÜLTÜYORDU, SİLDİK */
     }
 
-    /* 🔹 Kart genişliğini tam sayfa yap */
     .container, .card {
         max-width: 100% !important;
         width: 100% !important;
@@ -43,46 +62,38 @@
         padding: 5mm !important;
     }
 
-    /* 🔹 Font boyutlarını küçült */
-    body, .card, .container, table {
-        font-size: 9pt !important;
-        line-height: 1.2 !important;
-    }
-
-    h1, h2, h3, h4, h5, h6 {
-        font-size: 11pt !important;
-        margin: 0 0 3px 0 !important;
-    }
-
-    /* 🔹 Tablo ve görseller optimize */
-    table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-    }
-
-    th, td {
-        padding: 2px 5px !important;
-    }
-
-    img {
-        max-width: 80mm !important;
-        height: auto !important;
-    }
-
-    /* 🔹 Boş sayfa oluşumunu engelle */
-    @page {
-        size: A4 portrait;
-        margin: 10mm;
-    }
-
-    /* 🔹 Yazdır butonu, düzenle butonu ve benzeri gizlensin */
     .no-print,
     .btn-warning,
     .extra-images-section,
-    .extra-images-section + form,
-    h5.fw-bold.mt-4 {
+    .extra-images-section + form {
         display: none !important;
-        visibility: hidden !important;
+    }
+
+    /* 🔍 QR ve yazılarını büyük bas */
+    .qr-print-block {
+        display: flex !important;
+        align-items: center !important;
+        gap: 20px !important;
+        font-size: 18pt !important;
+        line-height: 1.4 !important;
+    }
+
+    .qr-print-block img,
+    .qr-img {
+        max-height: 260px !important;
+        width: auto !important;
+    }
+
+    .qr-print-block .qr-text {
+        font-size: 18pt !important;
+        line-height: 1.4 !important;
+        font-weight: 600 !important;
+    }
+
+    /* İçindeki tüm satırlar aynı büyüklükte olsun (açıklama dahil) */
+    .qr-print-block .qr-text div {
+        font-size: inherit !important;
+        line-height: inherit !important;
     }
 }
 
@@ -109,18 +120,15 @@
     transition: transform 0.2s ease;
 }
 
-/* 🖱️ Hover efekti */
 .extra-images-section img:hover {
     transform: scale(1.03);
     filter: brightness(1.05);
 }
 
-/* Güvenli tıklanabilirlik */
 .extra-images-section * {
     pointer-events: auto !important;
 }
 
-/* 🧩 Görsel üzerindeki silme butonunu görünür ve öne getir */
 .extra-images-section form {
     position: absolute !important;
     top: 2px !important;
@@ -133,12 +141,13 @@
     visibility: visible !important;
     display: inline-block !important;
 }
+</style>
 
-    </style>
 </head>
 
 <body class="bg-light py-5">
 
+    
 {% if user.is_authenticated %}
 <div class="container mb-3 no-print">
     <div class="d-flex justify-content-end">
@@ -209,14 +218,7 @@
             <div class="col-md-6"><span class="label">Açıklama:</span> {{ order.aciklama }}</div>
         </div>
 
-        <!-- 📱 QR Kod -->
-        {% if order.qr_code_url %}
-        <div class="text-center mt-3">
-            <h6 class="fw-bold">📱 QR Kod</h6>
-            <img src="{{ order.qr_code_url }}" alt="QR Kod" class="img-fluid rounded shadow-sm mb-2" style="max-height: 90px; width: auto;">
-        </div>
-        {% endif %}
-
+        
         <h5 class="fw-bold mt-4">📸 Ek Sipariş Görselleri</h5>
 
 <div class="d-flex flex-wrap justify-content-center mb-3 extra-images-section">

@@ -238,69 +238,50 @@
 
 {% block extra_js %}
 <script>
-function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, musteriRef) {
+function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, musteriRef, aciklama) {
+
+    if (!aciklama || aciklama.trim() === "") aciklama = "—";
 
     let content = `
     <html>
     <head>
+        <meta charset="UTF-8">
         <style>
-            body {
-                font-family: Arial, sans-serif;
-                margin: 5px;
-            }
-            .label-container {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 0;
-            }
-            .qr-box img {
-                width: 120px;
-                height: 120px;
-            }
-            .info-box {
-                font-size: 12px;
-                line-height: 1.1;
-                max-width: 180px;
-            }
-            .info-box strong {
-                font-size: 14px;
-            }
+            body { font-family: Arial; margin: 30px; }
+            .label-container { display: flex; gap: 30px; }
+            .qr-box img { width: 250px; height: 250px; }
+            .info-box { font-size: 32px; line-height: 1.4; }
+            .info-box strong { font-size: 38px; }
+            .desc { margin-top: 20px; font-size: 30px; font-weight: bold; }
         </style>
     </head>
     <body>
 
         <div class="label-container">
-
-            <div class="qr-box">
-                <img src="${qrUrl}">
-            </div>
-
+            <div class="qr-box"><img src="${qrUrl}"></div>
             <div class="info-box">
                 <strong>${siparisNo}</strong><br>
-                ${tip || ""}<br>
-                ${musteri || ""}<br>
+                ${tip}<br>
+                ${musteri}<br>
                 ${urunKodu} - ${renk} - ${beden}<br>
                 ${musteriRef ? "(" + musteriRef + ")" : ""}
+                <div class="desc">Açıklama: ${aciklama}</div>
             </div>
-
         </div>
 
         <script>
-            window.onload = function() {
-                window.print();
-            }
+            window.onload = () => window.print();
         <\/script>
 
     </body>
-    </html>
-    `;
+    </html>`;
 
-    let printWindow = window.open("", "_blank", "width=350,height=250");
-    printWindow.document.write(content);
-    printWindow.document.close();
+    let w = window.open("", "_blank", "width=900,height=700");
+    w.document.write(content);
+    w.document.close();
 }
 </script>
+
 
 <!-- 🔍 FİLTRE MODALI -->
 <div class="modal fade" id="filterModal" tabindex="-1">
