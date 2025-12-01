@@ -286,6 +286,41 @@ class Order(models.Model):
 
         super().save(*args, **kwargs)
 
+        # --- QR KOD OLUŞTUR ---
+        if creating and not self.qr_code_url:
+            base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
+            detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
+
+            qr = qrcode.QRCode(box_size=8, border=2)
+            qr.add_data(detail_url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
+
+            from datetime import datetime
+            buffer = BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"qr_{self.pk}_{timestamp}.png"
+
+            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+            bucket = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME)
+
+            response = bucket.upload(
+                path=filename,
+                file=buffer.getvalue(),
+                file_options={"content-type": "image/png"},
+            )
+
+            error_attr = getattr(response, "error", None)
+            if error_attr is None:
+                public_url = bucket.get_public_url(filename)
+                self.qr_code_url = public_url
+                super().save(update_fields=["qr_code_url"])
+            else:
+                print("⚠️ Supabase upload error:", error_attr)
+
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -306,41 +341,7 @@ class MesaiKayit(models.Model):
 
 
 
-        if creating and not self.qr_code_url:
-            base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
-            detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
-
-            qr = qrcode.QRCode(box_size=8, border=2)
-            qr.add_data(detail_url)
-            qr.make(fit=True)
-            img = qr.make_image(fill_color="black", back_color="white")
-
-            from datetime import datetime
-            buffer = BytesIO()
-            img.save(buffer, format="PNG")
-            buffer.seek(0)
-
-            # 🔹 Benzersiz dosya ismi (örnek: qr_15_20251107_104512.png)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"qr_{self.pk}_{timestamp}.png"
-
-            supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-            bucket = supabase.storage.from_(settings.SUPABASE_BUCKET_NAME)
-
-            # 🚀 Dosyayı yükle
-            response = bucket.upload(
-                path=filename,
-                file=buffer.getvalue(),
-                file_options={"content-type": "image/png"},
-            )
-
-            error_attr = getattr(response, "error", None)
-            if error_attr is None:
-                public_url = bucket.get_public_url(filename)
-                self.qr_code_url = public_url
-                super().save(update_fields=["qr_code_url"])
-            else:
-                print("⚠️ Supabase upload error:", error_attr)
+        
 
     @property
     def son_durum(self):
