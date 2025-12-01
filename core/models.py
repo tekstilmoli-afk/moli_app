@@ -288,7 +288,7 @@ class Order(models.Model):
 
         # --- QR KOD OLUŞTUR ---
         if creating and not self.qr_code_url:
-            base_url = getattr(settings, "BASE_URL", "http://127.0.0.1:8000")
+            base_url = settings.BASE_URL
             detail_url = f"{base_url}{reverse('order_detail', args=[self.pk])}"
 
             qr = qrcode.QRCode(box_size=8, border=2)
