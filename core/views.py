@@ -456,6 +456,18 @@ def order_detail(request, pk):
 
     is_manager = request.user.groups.filter(name__in=["patron", "mudur"]).exists()
 
+    # 📌 Geri dönüş URL'si (liste, rapor veya QR için akıllı sistem)
+    return_url = request.GET.get("return_url")  # 1) URL’de varsa kullan
+
+    # 2) Yoksa (ör. QR’dan geldiyse), HTTP_REFERER'i dene
+    if not return_url:
+        return_url = request.META.get("HTTP_REFERER")
+
+    # 3) Yine yoksa (tarayıcı geçmişi yoksa), güvenli fallback → order list
+    if not return_url:
+        return_url = "/orders/"
+
+
     return render(
         request,
         "core/order_detail.html",
@@ -467,6 +479,7 @@ def order_detail(request, pk):
             "update_events": update_events,
             "is_manager": is_manager,
             "uretim_kayitlari": uretim_kayitlari,
+            "back_url": return_url,
         },
     )
 
