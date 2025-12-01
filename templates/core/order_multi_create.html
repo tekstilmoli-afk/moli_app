@@ -101,37 +101,39 @@
             <div id="rows-container">
 
                 <div class="row mb-3 renk-beden-row" data-index="0">
-                    <div class="col-md-3">
-                        <label class="form-label">Renk</label>
-                        <select name="renk_row_0" class="form-select select2 renk-select">
-                            {% for r in renkler %}
-                            <option value="{{ r.ad }}">{{ r.ad }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label">Bedenler</label>
-                        <select name="beden_row_0[]" class="form-select select2 beden-select" multiple>
-                            {% for b in bedenler %}
-                            <option value="{{ b.ad }}">{{ b.ad }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+    <div class="col-md-3">
+        <label class="form-label">Renk</label>
+        <select name="renk_row_0" class="form-select select2 renk-select">
+            {% for r in renkler %}
+            <option value="{{ r.ad }}">{{ r.ad }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
-                    <div class="col-md-2">
-                        <label class="form-label">Adet</label>
-                        <input type="number" min="1" value="1" name="adet_row_0" class="form-control">
-                    </div>
+    <div class="col-md-4">
+        <label class="form-label">Bedenler</label>
+        <select name="beden_row_0[]" class="form-select select2 beden-select" multiple>
+            {% for b in bedenler %}
+            <option value="{{ b.ad }}">{{ b.ad }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
-                    <div class="col-md-3">
-                        <label class="form-label">Müşteri Referansı</label>
-                        <input type="text" name="musteri_ref_row_0" class="form-control" placeholder="Örn: PO123">
-                    </div>
+    <div class="col-md-2">
+        <label class="form-label">Adet</label>
+        <input type="number" min="1" value="1" name="adet_row_0" class="form-control">
+    </div>
 
-                    <div class="col-md-2 d-flex align-items-end">
-                        <button type="button" class="btn btn-danger remove-row">Sil</button>
-                    </div>
+    <div class="col-md-3">
+        <label class="form-label">Müşteri Referansı</label>
+        <input type="text" name="musteri_ref_row_0" class="form-control" placeholder="Örn: PO123">
+    </div>
+
+
+                    <div class="col-12 mt-2">
+    <button type="button" class="btn btn-danger remove-row">Sil</button>
+</div>
                 </div>
 
             </div>
@@ -239,14 +241,20 @@ $(document).ready(function () {
                 </select>
             </div>
 
+            <div class="col-md-2">
+    <label class="form-label">Adet</label>
+    <input type="number" min="1" value="1" name="adet_row_${index}" class="form-control">
+</div>
+
+
             <div class="col-md-3">
                 <label class="form-label">Müşteri Referansı</label>
                 <input type="text" name="musteri_ref_row_${index}" class="form-control" placeholder="Örn: PO123">
             </div>
 
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="button" class="btn btn-danger remove-row">Sil</button>
-            </div>
+            <div class="col-12 mt-2">
+    <button type="button" class="btn btn-danger remove-row">Sil</button>
+</div>
         </div>`;
 
         $("#rows-container").append(row);
