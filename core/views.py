@@ -2060,3 +2060,94 @@ def renk_pasif_yap_ajax(request):
     except Renk.DoesNotExist:
         return JsonResponse({"success": False, "message": "Renk bulunamadı."})
 
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
+from datetime import date
+from .models import MesaiKayit as Attendance  # Attendance modelini sen MesaiKayit olarak tutuyorsun
+
+def is_manager(user):
+    return user.is_staff or user.groups.filter(name__in=["patron", "mudur"]).exists()
+
+@login_required
+@user_passes_test(is_manager)
+def attendance_user_month_report(request, user_id, year=None, month=None):
+    target_user = get_object_or_404(User, pk=user_id)
+
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+
+    start, end = month_range(year, month)
+
+    # ✔️ DOĞRU QUERY
+    qs = Attendance.objects.filter(
+        user=target_user,
+        date__gte=start,
+        date__lte=end
+    ).order_by("date")
+
+    att_map = {att.date: att for att in qs}
+
+    workdays = list(iter_workdays(start, end))
+    total_workdays = len(workdays)
+
+    absent_days = [d for d in workdays if d not in att_map]
+
+    total_late = sum(a.late_minutes for a in qs)
+    total_early = sum(a.early_leave_minutes for a in qs)
+    total_overtime = sum(a.overtime_minutes for a in qs)
+
+    daily_data = []
+    total_work_minutes = 0
+
+    for d in workdays:
+        att = att_map.get(d)
+        if att and att.work_duration:
+            dur_min = int(att.work_duration.total_seconds() // 60)
+        else:
+            dur_min = 0
+
+        total_work_minutes += dur_min
+
+        daily_data.append({
+            "date": d,
+            "attendance": att,
+            "work_minutes": dur_min,
+            "late_minutes": att.late_minutes if att else 0,
+            "early_minutes": att.early_leave_minutes if att else 0,
+            "overtime_minutes": att.overtime_minutes if att else 0,
+        })
+
+    return render(request, "attendance/user_month_report.html", {
+        "target_user": target_user,
+        "year": year,
+        "month": month,
+        "start": start,
+        "end": end,
+        "total_workdays": total_workdays,
+        "absent_days": absent_days,
+        "absent_count": len(absent_days),
+        "total_late": total_late,
+        "total_early": total_early,
+        "total_overtime": total_overtime,
+        "total_work_minutes": total_work_minutes,
+        "daily_data": daily_data,
+    })
+
+
+
+
+# @login_required
+# @user_passes_test(is_manager)
+# def puantaj_panel(request):
+#     users = User.objects.filter(is_active=True).order_by("username")
+#     today = date.today()
+#     return render(request, "attendance/puantaj_panel.html", {
+#         "users": users,
+#         "year": today.year,
+#         "month": today.month,
+#     })
+
+
+
+

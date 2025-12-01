@@ -71,6 +71,18 @@ urlpatterns = [
     path("reports/giden-urunler/", views.giden_urunler_raporu, name="giden_urunler_raporu"),
     path("reports/home/", views.reports_home, name="reports_home"),
 
+    # 🕒 Personel Aylık Mesai Raporu
+    path(
+        "attendance/report/<int:user_id>/<int:year>/<int:month>/",
+        views.attendance_user_month_report,
+        name="attendance_user_month_report"
+    ),
+
+    # path("puantaj/", views.puantaj_panel, name="puantaj_panel"),
+
+
+
+
     # 🧵 Fasoncu ve Nakışçı Raporları
     path("reports/fasoncu/", views.fasoncu_raporu, name="fasoncu_raporu"),
     path("reports/nakisci/", views.nakisci_raporu, name="nakisci_raporu"),

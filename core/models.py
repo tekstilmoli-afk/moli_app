@@ -286,6 +286,18 @@ class Order(models.Model):
 
         super().save(*args, **kwargs)
 
+from django.db import models
+from django.contrib.auth.models import User
+
+class MesaiKayit(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    giris_zamani = models.DateTimeField(null=True, blank=True)
+    cikis_zamani = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.giris_zamani}"
+
+
 
 
 

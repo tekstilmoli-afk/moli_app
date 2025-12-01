@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container my-4">
+  <a href="{% url 'management_home' %}" class="btn btn-sm btn-outline-secondary mb-3">← Geri</a>
+
+  <h3>👤 {{ target_user.get_full_name|default:target_user.username }} - {{ month }} / {{ year }} Mesai Özeti</h3>
+
+  <!-- ÖZET KARTLAR -->
+  <div class="row my-3">
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="fw-bold">Toplam İş Günü</div>
+          <div class="display-6">{{ total_workdays }}</div>
+          <small class="text-muted">{{ start }} - {{ end }}</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="fw-bold">Gelmediği Gün</div>
+          <div class="display-6 text-danger">{{ absent_count }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="fw-bold">Toplam Geç Kalma</div>
+          <div class="display-6 text-warning">
+            {{ total_late }} dk
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="fw-bold">Toplam Fazla Mesai</div>
+          <div class="display-6 text-success">
+            {{ total_overtime }} dk
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAFİK -->
+  <div class="card my-3">
+    <div class="card-header">📊 Günlük Çalışma Süresi (saat)</div>
+    <div class="card-body">
+      <canvas id="workChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- TABLO -->
+  <div class="card my-3">
+    <div class="card-header">Günlük Detay</div>
+    <div class="card-body table-responsive">
+      <table class="table table-sm table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Tarih</th>
+            <th>Giriş</th>
+            <th>Çıkış</th>
+            <th>Çalışma Süresi</th>
+            <th>Geç Kalma</th>
+            <th>Erken Çıkış</th>
+            <th>Fazla Mesai</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in daily_data %}
+          {% with att=row.attendance %}
+          <tr class="{% if not att %}table-danger{% elif att.is_holiday %}table-info{% endif %}">
+            <td>{{ row.date|date:"d.m.Y D" }}</td>
+            <td>{% if att and att.time_in %}{{ att.time_in|time:"H:i" }}{% else %}-{% endif %}</td>
+            <td>{% if att and att.time_out %}{{ att.time_out|time:"H:i" }}{% else %}-{% endif %}</td>
+            <td>
+              {% if row.work_minutes %}
+                {{ row.work_minutes|divisibleby:60 }} saat {{ row.work_minutes|mod:60 }} dk
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>{% if row.late_minutes %}{{ row.late_minutes }} dk{% else %}-{% endif %}</td>
+            <td>{% if row.early_minutes %}{{ row.early_minutes }} dk{% else %}-{% endif %}</td>
+            <td>{% if row.overtime_minutes %}{{ row.overtime_minutes }} dk{% else %}-{% endif %}</td>
+          </tr>
+          {% endwith %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Excel / PDF export butonları -->
+  <div class="d-flex gap-2 my-3">
+    <a href="{% url 'attendance_user_month_excel' target_user.id year month %}" class="btn btn-outline-success btn-sm">📊 Excel İndir</a>
+    <a href="{% url 'attendance_user_month_pdf' target_user.id year month %}" class="btn btn-outline-danger btn-sm">📄 PDF İndir</a>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const labels = [
+    {% for row in daily_data %}
+      "{{ row.date|date:'d.m' }}",
+    {% endfor %}
+  ];
+  const workData = [
+    {% for row in daily_data %}
+      {{ row.work_minutes|default:0 }}/60,
+    {% endfor %}
+  ];
+
+  const ctx = document.getElementById('workChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Çalışma Süresi (saat)',
+        data: workData,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

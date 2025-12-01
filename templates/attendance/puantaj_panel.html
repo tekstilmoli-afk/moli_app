@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-4">
+
+    <h3>📅 Puantaj & Mesai Takip Paneli</h3>
+    <p class="text-muted">Aşağıdan personel seçerek aylık çalışma raporlarını görüntüleyebilirsiniz.</p>
+
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Personel</th>
+                <th>Aylık Rapor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.get_full_name|default:user.username }}</td>
+                <td>
+                    <a href="/attendance/report/{{ user.id }}/{{ year }}/{{ month }}/" 
+                       class="btn btn-sm btn-primary">
+                       Raporu Aç →
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+{% endblock %}
