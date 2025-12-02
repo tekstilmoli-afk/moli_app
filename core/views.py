@@ -1809,6 +1809,9 @@ def mark_notification_read(request, pk):
 @login_required
 def order_multi_create(request):
 
+    print("📨 POST GELDİ:", request.POST)
+    print("📱 USER:", request.user.username)
+
     if request.method == "POST":
 
         # ---- GENEL ALANLAR ----
