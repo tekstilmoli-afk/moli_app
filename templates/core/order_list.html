@@ -59,6 +59,7 @@
                     <th>Adet</th>
                     <th>Renk</th>
                     <th>Beden</th>
+                    <th>Açıklama</th>
                     <th>Teslim Tarihi</th>
                     <th>Son Durum</th>
                     <th>QR Kod</th>
@@ -71,11 +72,15 @@
                 <tr>
 
                     <td>
-                        {{ order.siparis_numarasi }}
-                        {% if order.is_new %}
-                            <span class="badge bg-warning text-dark ms-1">Yeni</span>
-                        {% endif %}
-                    </td>
+    <a href="{% url 'order_detail' order.id %}?{{ request.GET.urlencode }}"
+       class="text-decoration-none">
+        {{ order.siparis_numarasi }}
+    </a>
+    {% if order.is_new %}
+        <span class="badge bg-warning text-dark ms-1">Yeni</span>
+    {% endif %}
+</td>
+
 
                     <td>
                         {% if order.musteri %}
@@ -99,6 +104,13 @@
                     <td>{{ order.adet }}</td>
                     <td>{{ order.renk }}</td>
                     <td>{{ order.beden }}</td>
+                    <td
+    title="{{ order.aciklama|default:'' }}"
+    data-bs-toggle="tooltip"
+    data-bs-placement="top"
+>
+    {{ order.aciklama|default:"-"|truncatechars:12 }}
+</td>
                     <td>{{ order.teslim_tarihi|date:"d.m.Y" }}</td>
 
                     <td>
@@ -141,13 +153,6 @@
                     <td class="text-end">
     <div class="d-flex justify-content-end gap-2">
 
-        <!-- GÖRÜNTÜLE (Sabit, Büyük) -->
-        <a href="{% url 'order_detail' order.id %}?{{ request.GET.urlencode }}" 
-   class="btn btn-primary btn-sm">
-    Görüntüle
-</a>
-
-
         <!-- ÜÇ NOKTA MENÜ -->
         <div class="dropdown">
             <button class="btn btn-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown">
@@ -173,6 +178,8 @@
                         </form>
                     </li>
                 {% endif %}
+
+                
 
                 <!-- Silme İşlemi -->
                 {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
@@ -511,6 +518,15 @@ $(document).ready(function() {
         let target = $(this).data("target");
         $(target).val(null).trigger("change");
     });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
 });
 </script>
 
