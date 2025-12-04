@@ -11,18 +11,55 @@
 <style>
     body { background: #f7f7f7; }
     .card { border-radius: 12px; }
-    .select2-container .select2-selection--multiple {
-        min-height: 38px;
-        padding: 4px;
-        border: 1px solid #ced4da;
-        border-radius: 6px;
-    }
-    .select2-container .select2-selection--single {
-        min-height: 38px;
-        padding: 4px;
-        border: 1px solid #ced4da;
-        border-radius: 6px;
-    }
+    /* --- Select2 Tekli Seçim Alanı Hizalama --- */
+.select2-container .select2-selection--single {
+    height: 42px !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    padding-left: 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* İç metni ortala */
+.select2-selection__rendered {
+    line-height: 40px !important;
+}
+
+/* Ok ikonu hizalama */
+.select2-selection__arrow {
+    height: 40px !important;
+    margin-top: 1px !important;
+}
+
+/* Ayar butonunu Select2 ile aynı hizaya getir */
+.input-group .btn-settings {
+    height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 12px !important;
+}
+
+.select2-container {
+    width: 100% !important;
+}
+
+
+/* Select2 dış container yüksekliğini sabitle */
+.select2-container {
+    height: 42px !important;
+    padding: 0 !important;
+}
+
+/* İç select alanını dikey ortala */
+.select2-container .select2-selection--single {
+    height: 42px !important;
+    line-height: 42px !important;
+}
+
+
 </style>
 </head>
 
@@ -38,64 +75,71 @@
         <form method="POST">
             {% csrf_token %}
 
-            <!-- 🔹 ÜST KISIM: ÜRÜN + MÜŞTERİ + TİP -->
             <div class="row mb-3">
 
-                <!-- ÜRÜN KODU + YÖNET BUTONU -->
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Ürün Kodu</label>
-                    <div class="input-group">
-                        <select id="urun_kodu_select" name="urun_kodu" class="form-select select2" required>
-                            <option value="">Seçiniz</option>
-                            {% for u in urun_kodlari %}
-                                <option value="{{ u.kod }}">{{ u.kod }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#urunKodModal">
-                            ⚙
-                        </button>
-                    </div>
-                </div>
+    <!-- Sipariş Tipi -->
+    <div class="col-md-4">
+        <label class="form-label fw-bold">Sipariş Tipi</label>
+        <select id="siparis_tipi_select" name="siparis_tipi" class="form-select" required>
+            <option value="SERI">Seri</option>
+            <option value="STOK">Stoğa Üretim</option>
+            <option value="OZEL">Özel Sipariş</option>
+        </select>
+    </div>
 
-                <!-- MÜŞTERİ + YÖNET BUTONU -->
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Müşteri</label>
-                    <div class="input-group">
-                        <select id="musteri_select" name="musteri" class="form-select select2" required>
-                            <option value="">Seçiniz</option>
-                            {% for m in musteriler %}
-                                <option value="{{ m.id }}">{{ m.ad }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#musteriModal">
-                            ⚙
-                        </button>
-                    </div>
-                </div>
+    <!-- Müşteri -->
+    <div class="col-md-4">
+        <label class="form-label fw-bold">Müşteri</label>
+        <select id="musteri_select" name="musteri" class="form-select select2" required>
+            <option value="">Seçiniz</option>
+            {% for m in musteriler %}
+                <option value="{{ m.id }}">{{ m.ad }}</option>
+            {% endfor %}
+        </select>
+    </div>
 
-                <div class="col-md-4">
-                    <label class="form-label fw-bold">Sipariş Tipi</label>
-                    <select id="siparis_tipi_select" name="siparis_tipi" class="form-select" required>
-                        <option value="SERI">Seri</option>
-                        <option value="STOK">Stoğa Üretim</option>
-                        <option value="OZEL">Özel Sipariş</option>
-                    </select>
-                </div>
-            </div>
+    <!-- Ürün Kodu -->
+    <div class="col-md-4">
+        <label class="form-label fw-bold">Ürün Kodu</label>
+        <select id="urun_kodu_select" name="urun_kodu" class="form-select select2" required>
+            <option value="">Seçiniz</option>
+            {% for u in urun_kodlari %}
+                <option value="{{ u.kod }}">{{ u.kod }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+</div>
 
             <hr>
             <h5 class="fw-bold mb-3 d-flex justify-content-between align-items-center">
-                <span>Renk - Beden Satırları</span>
-                <!-- RENK / BEDEN YÖNETİM BUTONLARI -->
-                <span class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#renkModal">
-                        🎨 Renk Yönet
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bedenModal">
-                        👕 Beden Yönet
-                    </button>
-                </span>
-            </h5>
+    <span>Renk - Beden Satırları</span>
+
+    <span class="d-flex gap-2">
+
+        <!-- Renk Yönet -->
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#renkModal">
+            🎨 Renk Yönet
+        </button>
+
+        <!-- Beden Yönet -->
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bedenModal">
+            👕 Beden Yönet
+        </button>
+
+        <!-- Müşteri Yönet -->
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#musteriModal">
+            🧍 Müşteri Yönet
+        </button>
+
+        <!-- Ürün Kodu Yönet -->
+        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#urunKodModal">
+            📦 Ürün Kodu Yönet
+        </button>
+
+    </span>
+</h5>
+
 
             <!-- 🔻 SATIRLAR -->
             <div id="rows-container">
