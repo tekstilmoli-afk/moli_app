@@ -215,9 +215,19 @@
 <script>
 $(document).ready(function () {
 
-    $(".select2").select2();
+$(".select2").select2({
+    minimumResultsForSearch: 0,
+    width: "100%"
+});
 
     let index = 1;
+
+$(document).on('select2:open', () => {
+    document.querySelector('.select2-container--open .select2-search__field').focus();
+});
+
+    
+
 
     // Satır ekle
     $("#add-row").click(function () {
@@ -258,7 +268,14 @@ $(document).ready(function () {
         </div>`;
 
         $("#rows-container").append(row);
-        $(".select2").select2();
+        $(".select2").select2({
+    minimumResultsForSearch: 0,
+    width: "100%"
+});
+        $(document).on('select2:open', () => {
+    document.querySelector('.select2-container--open .select2-search__field').focus();
+});
+
         index++;
     });
 
