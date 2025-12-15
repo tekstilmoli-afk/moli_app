@@ -552,20 +552,31 @@ def update_stage(request, pk):
     # ---------------------------------------------------------
     # 2️⃣ ÜRETİM GEÇMİŞİNE KAYIT OLUŞTUR
     # ---------------------------------------------------------
-    try:
-        display_value = dict(Order.DURUM_SECENEKLERI).get(value, value)
 
+    display_value = dict(Order.DURUM_SECENEKLERI).get(value, value)
+
+    STAGE_LABELS = {
+        "kesim_durum": "Kesim",
+        "dikim_durum": "Dikim",
+        "susleme_durum": "Süsleme",
+        "hazir_durum": "Hazır",
+        "sevkiyat_durum": "Sevkiyat",
+    }
+
+    try:
         OrderEvent.objects.create(
             order=order,
             user=request.user.username,
             gorev=stage.replace("_durum", ""),
             stage=stage,
-            value=display_value,
+            value=value,
             adet=order.adet or 1,
             event_type="stage"
         )
     except Exception as e:
         print("Üretim geçmişi hatası:", e)
+
+
 
     # ---------------------------------------------------------
     # 3️⃣ DEPO OTOMATİĞİ

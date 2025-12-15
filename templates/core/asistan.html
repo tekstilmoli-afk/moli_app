@@ -72,13 +72,14 @@
       userInput.value = "";
 
       const res = await fetch("/api/assistant/", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ message })
+});
+const data = await res.json();
+console.log("API yanıtı:", data);  // 🧠 Konsolda sonucu gör
+appendMessage(data.reply || data.message || "❗Yanıt alınamadı.", "ai");
 
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message })
-      });
-      const data = await res.json();
-      appendMessage(data.reply, "ai");
     }
 
     function appendMessage(text, sender) {

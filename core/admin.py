@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Musteri, Order, Nakisci, Fasoncu
+from .models import Musteri, Order, Nakisci, Fasoncu ,UserProfile
 
 # Order için gelişmiş görünüm (filtre + liste alanları)
 @admin.register(Order)
@@ -20,3 +20,10 @@ class OrderAdmin(admin.ModelAdmin):
 admin.site.register(Musteri)
 admin.site.register(Nakisci)
 admin.site.register(Fasoncu)
+
+# UserProfile görünümü — timeout kontrolü burada yapılacak
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'gorev', 'timeout_free')
+    list_editable = ('timeout_free',)
+    search_fields = ('user__username',)

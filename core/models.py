@@ -22,8 +22,12 @@ User = get_user_model()
 User = get_user_model()
 
 
-# 👤 Kullanıcı Profili (Görev)
+from django.db import models
+from django.utils import timezone
+from django.contrib.auth.models import User
+
 class UserProfile(models.Model):
+
     GOREV_SECENEKLERI = [
         ("yok", "Yok"),
         ("kesim", "Kesim"),
@@ -35,13 +39,19 @@ class UserProfile(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="userprofile")
+
+    # Üretim takip sistemi için görev alanı
     gorev = models.CharField(max_length=20, choices=GOREV_SECENEKLERI, default="yok")
 
-    # 👇 Bunu ekliyoruz!
+    # Kullanıcı sipariş görme takibi
     last_seen_orders = models.DateTimeField(default=timezone.now)
+
+    # Timeout sistemi için kişi bazlı ayar
+    timeout_free = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.username} ({self.gorev})"
+
 
 
 # 🔔 Kullanıcı oluşturulunca profilini aç
@@ -526,6 +536,7 @@ class OrderSeen(models.Model):
 
     def __str__(self):
         return f"{self.user} → {self.order}"
+
 
 
 

@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',
+    'core.apps.CoreConfig',
 ]
 
 # 🌐 Middleware sırası — ⚡️ Düzenlenmiş
@@ -43,6 +43,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.middleware.conditional_timeout.UserBasedTimeoutMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.cache.FetchFromCacheMiddleware',  # ⚡️ Cache en alta
@@ -181,3 +182,6 @@ BASE_URL = os.getenv('BASE_URL', 'https://moli-app.onrender.com')
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 "core.context_processors.notifications",
+
+print(">>> DJANGO BASE_URL =", BASE_URL)
+
