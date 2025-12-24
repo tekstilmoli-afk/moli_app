@@ -271,6 +271,20 @@ def order_list(request):
     elif teslim_bitis:
         qs = qs.filter(teslim_tarihi__lte=teslim_bitis)
 
+    # --- Son Durum Tarihi Aralığı (latest_event_time) ---
+    son_durum_baslangic = request.GET.get("son_durum_tarihi_baslangic")
+    son_durum_bitis = request.GET.get("son_durum_tarihi_bitis")
+
+    # latest_event_time datetime olduğu için date input'tan gelen değerler (YYYY-MM-DD)
+    # timestamp__date ile filtrelemek en temiz yöntem
+    if son_durum_baslangic and son_durum_bitis:
+        qs = qs.filter(latest_event_time__date__range=[son_durum_baslangic, son_durum_bitis])
+    elif son_durum_baslangic:
+        qs = qs.filter(latest_event_time__date__gte=son_durum_baslangic)
+    elif son_durum_bitis:
+        qs = qs.filter(latest_event_time__date__lte=son_durum_bitis)
+
+
     # 📊 Filtrelenmiş sipariş adedi
     filtered_count = qs.count()
 

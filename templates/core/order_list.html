@@ -480,6 +480,22 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
             </div>
           </div>
 
+          <!-- 🗓️ Son Durum Tarihi -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Son Durum Başlangıç</label>
+              <input type="date" name="son_durum_tarihi_baslangic"
+                    value="{{ request.GET.son_durum_tarihi_baslangic }}"
+                    class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Son Durum Bitiş</label>
+              <input type="date" name="son_durum_tarihi_bitis"
+                    value="{{ request.GET.son_durum_tarihi_bitis }}"
+                    class="form-control">
+            </div>
+          </div>
+          
         </div>
 
         <div class="modal-footer bg-light">
