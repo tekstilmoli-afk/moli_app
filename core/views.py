@@ -301,7 +301,7 @@ def order_list(request):
     selected_musteri_referans = musteri_referans_list
 
 
-        # -----------------------------------------
+    # -----------------------------------------
     # 🟦 6) SAYFALAMA
     # -----------------------------------------
     paginator = Paginator(qs, 50)
@@ -356,6 +356,16 @@ def order_list(request):
         "total_count": total_count,
         "filtered_count": filtered_count,
         "is_manager": is_manager,
+
+        # ✅ SEÇİLİ FİLTRELER
+        "selected_siparis_no": selected_siparis_no,
+        "selected_musteri": selected_musteri,
+        "selected_urun_kodu": selected_urun_kodu,
+        "selected_renk": selected_renk,
+        "selected_beden": selected_beden,
+        "selected_status": selected_status,
+        "selected_siparis_tipi": selected_siparis_tipi,
+        "selected_musteri_referans": selected_musteri_referans,
     }
 
     response = render(request, "core/order_list.html", context)

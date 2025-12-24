@@ -330,7 +330,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               <select id="tipSelect" class="form-select select2" name="siparis_tipi" multiple>
                 {% for t in siparis_tipi_options %}
                   <option value="{{ t }}" 
-        {% if t in request.GET.siparis_tipi %}
+        {% if t in selected_siparis_tipi %}
             selected
         {% endif %}
 >{{ t }}</option>
@@ -354,7 +354,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
 
               <select id="siparisSelect" class="form-select select2" name="siparis_no" multiple>
                 {% for s in siparis_options %}
-                  <option value="{{ s }}" {% if s in request.GET.siparis_no %}selected{% endif %}>{{ s }}</option>
+                  <option value="{{ s }}" {% if s in selected_siparis_no %}selected{% endif %}>{{ s }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -369,7 +369,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               </label>
               <select id="musteriSelect" class="form-select select2" name="musteri" multiple>
                 {% for m in musteri_options %}
-                  <option value="{{ m }}" {% if m in request.GET.musteri %}selected{% endif %}>{{ m }}</option>
+                  <option value="{{ m }}" {% if m in selected_musteri %}selected{% endif %}>{{ m }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -389,7 +389,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               </label>
               <select id="refSelect" class="form-select select2" name="musteri_referans" multiple>
                 {% for ref in musteri_referans_options %}
-                  <option value="{{ ref }}" {% if ref in request.GET.musteri_referans %}selected{% endif %}>{{ ref }}</option>
+                  <option value="{{ ref }}" {% if ref in selected_musteri_referans %}selected{% endif %}>{{ ref }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -404,7 +404,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               </label>
               <select id="urunSelect" class="form-select select2" name="urun_kodu" multiple>
                 {% for u in urun_options %}
-                  <option value="{{ u }}" {% if u in request.GET.urun_kodu %}selected{% endif %}>{{ u }}</option>
+                  <option value="{{ u }}" {% if u in selected_urun_kodu %}selected{% endif %}>{{ u }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -424,7 +424,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               </label>
               <select id="renkSelect" class="form-select select2" name="renk" multiple>
                 {% for r in renk_options %}
-                  <option value="{{ r }}" {% if r in request.GET.renk %}selected{% endif %}>{{ r }}</option>
+                  <option value="{{ r }}" {% if r in selected_renk %}selected{% endif %}>{{ r }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -439,7 +439,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               </label>
               <select id="bedenSelect" class="form-select select2" name="beden" multiple>
                 {% for b in beden_options %}
-                  <option value="{{ b }}" {% if b in request.GET.beden %}selected{% endif %}>{{ b }}</option>
+                  <option value="{{ b }}" {% if b in selected_beden %}selected{% endif %}>{{ b }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -458,7 +458,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
               </label>
               <select id="durumSelect" class="form-select select2" name="status" multiple>
                 {% for st in status_options %}
-                  <option value="{{ st }}" {% if st in request.GET.status %}selected{% endif %}>{{ st }}</option>
+                  <option value="{{ st }}" {% if st in selected_status %}selected{% endif %}>{{ st }}</option>
                 {% endfor %}
               </select>
             </div>
@@ -495,7 +495,7 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
                     class="form-control">
             </div>
           </div>
-          
+
         </div>
 
         <div class="modal-footer bg-light">
