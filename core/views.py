@@ -210,6 +210,7 @@ def order_list(request):
         .annotate(
             latest_stage=Subquery(latest_event.values("stage")),
             latest_value=Subquery(latest_event.values("value")),
+            latest_event_time=Subquery(latest_event.values("timestamp")[:1]),
         )
         .order_by("-id")
     )

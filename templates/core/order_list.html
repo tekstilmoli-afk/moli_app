@@ -62,6 +62,7 @@
                     <th>Açıklama</th>
                     <th>Teslim Tarihi</th>
                     <th>Son Durum</th>
+                    <th>Son Durum Tarihi</th>
                     <th>QR Kod</th>
                     <th>Etiket</th>
                     <th>Detay</th>
@@ -120,6 +121,15 @@
                             <span class="text-muted fst-italic">-</span>
                         {% endif %}
                     </td>
+
+                    <td>
+                        {% if order.latest_event_time %}
+                            {{ order.latest_event_time|date:"d.m.Y" }}
+                        {% else %}
+                            <span class="text-muted fst-italic">-</span>
+                        {% endif %}
+                    </td>
+
 
                     <td>
                         {% if order.qr_code_url %}
@@ -202,7 +212,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="11" class="text-center text-muted py-4">
+                    <td colspan="14" class="text-center text-muted py-4">
                         Henüz sipariş bulunmuyor.
                     </td>
                 </tr>
