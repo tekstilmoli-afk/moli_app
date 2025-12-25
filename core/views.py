@@ -141,10 +141,12 @@ def order_list(request):
     # 📊 Tüm siparişlerin toplam adedi (filtre öncesi)
     total_count = Order.objects.count()
 
-    # 🚚 Sevkedilen sipariş sayısı (filtreye bağlı değil)
+    # ✅ Aktif / pasif sayıları (filtrelerden bağımsız global)
+    total_active_count = Order.objects.filter(is_active=True).count()
+    total_passive_count = Order.objects.filter(is_active=False).count()
+
+    # ✅ Sevkedilen sayısı (aktif/pasif bağımsız global)
     total_shipped_count = Order.objects.filter(sevkiyat_durum="gonderildi").count()
-
-
 
     seen_map = {
         s.order_id: s.seen_time
@@ -207,7 +209,7 @@ def order_list(request):
     qs = (
         Order.objects.select_related("musteri")
         .only(
-            "id", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk",
+            "id", "is_active", "siparis_numarasi", "siparis_tipi", "urun_kodu", "renk",
             "beden", "adet", "siparis_tarihi", "teslim_tarihi",
             "aciklama", "musteri__ad", "qr_code_url"
         )
@@ -219,7 +221,16 @@ def order_list(request):
         .order_by("-id")
     )
 
-   # -----------------------------------------
+    # ✅✅✅ AKTİFLİK FİLTRESİ BURAYA
+    active_filter = request.GET.get("aktiflik", "aktif")  # default aktif
+
+    if active_filter == "aktif":
+        qs = qs.filter(is_active=True)
+    elif active_filter == "pasif":
+        qs = qs.filter(is_active=False)
+    # "tumu" ise filtre yok
+
+    # -----------------------------------------
     # 📌 5) FİLTRELER (DOĞRU HALİ)
     # -----------------------------------------
     siparis_nolar = request.GET.getlist("siparis_no")
@@ -370,6 +381,12 @@ def order_list(request):
         "total_count": total_count,
         "filtered_count": filtered_count,
         "total_shipped_count": total_shipped_count,
+
+        "active_filter": active_filter,
+        "selected_aktiflik": active_filter,
+        "total_active_count": total_active_count,
+        "total_passive_count": total_passive_count,
+
         "is_manager": is_manager,
 
         # ✅ SEÇİLİ FİLTRELER
@@ -2201,6 +2218,25 @@ def attendance_user_month_report(request, user_id, year=None, month=None):
         "daily_data": daily_data,
     })
 
+@login_required
+@require_POST
+def order_toggle_active(request, pk):
+
+    # 🛡️ sadece patron/müdür
+    if not request.user.groups.filter(name__in=["patron", "mudur"]).exists():
+        return JsonResponse({"success": False, "message": "Yetki yok"}, status=403)
+
+    order = get_object_or_404(Order, pk=pk)
+
+    # toggle
+    order.is_active = not order.is_active
+    order.save(update_fields=["is_active"])
+
+    return JsonResponse({
+        "success": True,
+        "is_active": order.is_active,
+        "message": "Sipariş aktif edildi ✅" if order.is_active else "Sipariş pasif edildi ✅"
+    })
 
 
 

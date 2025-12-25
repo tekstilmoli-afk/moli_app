@@ -171,6 +171,7 @@ class Order(models.Model):
     sevkiyat_yapan = models.CharField(max_length=100, blank=True, null=True)
     sevkiyat_tarihi = models.DateTimeField(blank=True, null=True)
     cikti_alindi = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True, db_index=True)
 
     DURUM_SECENEKLERI = [
         ('bekliyor', 'Bekliyor'),
@@ -450,6 +451,7 @@ class OrderEvent(models.Model):
         choices=[
             ("stage", "Aşama Güncellemesi"),
             ("order_update", "Sipariş Güncellemesi"),
+            ("system", "Sistem"),
         ],
         default="stage"
     )

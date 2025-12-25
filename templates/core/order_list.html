@@ -38,11 +38,14 @@
     </div>
 
     <!-- 📊 Sipariş Sayacı -->
-<div class="alert alert-primary py-2 px-3 my-2 d-flex justify-content-between fw-bold shadow-sm" style="font-size:16px;">
-    <span>📦 Toplam: {{ total_count }}</span>
-    <span>🚚 Sevkedilen: {{ total_shipped_count }}</span>
-    <span>🎯 Filtrelenmiş: {{ filtered_count }}</span>
-</div>
+    <div class="alert alert-primary py-2 px-3 my-2 d-flex flex-wrap justify-content-between fw-bold shadow-sm" style="font-size:16px;">
+        <span>📦 Toplam: {{ total_count }}</span>
+        <span>✅ Aktif: {{ total_active_count }}</span>
+        <span>🟡 Pasif: {{ total_passive_count }}</span>
+        <span>🚚 Sevkedilen: {{ total_shipped_count }}</span>
+        <span>🎯 Filtrelenmiş: {{ filtered_count }}</span>
+    </div>
+
 
 
     <!-- Tablo -->
@@ -190,7 +193,18 @@
                     </li>
                 {% endif %}
 
-                
+                <li><hr class="dropdown-divider"></li>
+
+                <li>
+                    <button class="dropdown-item"
+                            onclick="toggleActive(this, '{{ order.id }}')">
+                        {% if order.is_active %}
+                            ⛔ Pasif Et
+                        {% else %}
+                            ✅ Aktif Et
+                        {% endif %}
+                    </button>
+                </li>
 
                 <!-- Silme İşlemi -->
                 {% if user.groups.first.name == "patron" or user.groups.first.name == "mudur" %}
@@ -317,6 +331,18 @@ function printLabel(qrUrl, siparisNo, tip, musteri, urunKodu, renk, beden, muste
 
       <form method="GET" action="{% url 'order_list' %}">
         <div class="modal-body">
+
+          <!-- 🟩 Aktiflik (Silinenler) -->
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label class="form-label fw-bold">Aktiflik</label>
+              <select class="form-select" name="aktiflik">
+                <option value="" {% if selected_aktiflik == "" %}selected{% endif %}>Tümü</option>
+                <option value="aktif" {% if selected_aktiflik == "aktif" or not selected_aktiflik %}selected{% endif %}>Aktif</option>
+                <option value="pasif" {% if selected_aktiflik == "pasif" %}selected{% endif %}>Pasif (Silinenler)</option>
+              </select>
+            </div>
+          </div>
 
           <!-- 🧩 0) Sipariş Tipi -->
           <div class="row mb-3">
@@ -612,6 +638,29 @@ function getCookie(name) {
         }
     }
     return cookieValue;
+}
+</script>
+<script>
+function toggleActive(btn, orderId) {
+
+    fetch(`/order/${orderId}/toggle-active/`, {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCookie("csrftoken")
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload(); 
+        } else {
+            alert("Hata: " + data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Bağlantı hatası!");
+    });
 }
 </script>
 

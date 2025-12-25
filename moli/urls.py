@@ -130,6 +130,7 @@ urlpatterns = [
     path("ajax/renk/ekle/", views.renk_ekle_ajax, name="renk_ekle_ajax"),
     path("ajax/renk/pasif-yap/", views.renk_pasif_yap_ajax, name="renk_pasif_yap_ajax"),
 
+    path("order/<int:pk>/toggle-active/", views.order_toggle_active, name="order_toggle_active"),
 
 ]
 
