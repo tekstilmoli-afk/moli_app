@@ -141,6 +141,10 @@ def order_list(request):
     # 📊 Tüm siparişlerin toplam adedi (filtre öncesi)
     total_count = Order.objects.count()
 
+    # 🚚 Sevkedilen sipariş sayısı (filtreye bağlı değil)
+    total_shipped_count = Order.objects.filter(sevkiyat_durum="gonderildi").count()
+
+
 
     seen_map = {
         s.order_id: s.seen_time
@@ -251,14 +255,24 @@ def order_list(request):
 
     # --- Durum Filtresi ---
     if status_filter:
+
+        q = Q()
+
+        # ✅ Hiç işlem yapılmamış siparişleri getir
+        if "İşlem Yapılmadı" in status_filter:
+            q |= Q(latest_event_time__isnull=True)
+
+        # ✅ Normal durum filtreleri
         stage_value_pairs = [
             key for key, val in STAGE_TRANSLATIONS.items()
             if val in status_filter
         ]
-        q = Q()
+
         for stage, value in stage_value_pairs:
             q |= Q(latest_stage=stage, latest_value=value)
+
         qs = qs.filter(q)
+
 
     # --- Teslim Tarihi Aralığı ---
     teslim_baslangic = request.GET.get("teslim_tarihi_baslangic")
@@ -351,10 +365,11 @@ def order_list(request):
     .distinct()
     .order_by("musteri_referans"),
 
-        "status_options": sorted(set(STAGE_TRANSLATIONS.values())),
+        "status_options": ["İşlem Yapılmadı"] + sorted(set(STAGE_TRANSLATIONS.values())),
         "siparis_tipi_options": Order.objects.values_list("siparis_tipi", flat=True).distinct().order_by("siparis_tipi"),
         "total_count": total_count,
         "filtered_count": filtered_count,
+        "total_shipped_count": total_shipped_count,
         "is_manager": is_manager,
 
         # ✅ SEÇİLİ FİLTRELER
